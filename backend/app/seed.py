@@ -21,6 +21,9 @@ from app.models import (
 )
 
 
+DEMO_DATASET_FILE_NAME = "demo-prototype-preview-sample.csv"
+
+
 def _demo_id(entity: str, key: str) -> str:
     return str(uuid5(NAMESPACE_URL, f"dhruvsetu-demo:{entity}:{key}"))
 
@@ -56,7 +59,7 @@ DEMO_IDS = {
     },
     "datasets": {
         key: _demo_id("dataset", key)
-        for key in ("temperature", "sea-ice", "atmosphere", "biodiversity")
+        for key in ("temperature", "sea-ice", "atmosphere", "biodiversity", "preview")
     },
     "media_assets": {
         key: _demo_id("media-asset", key)
@@ -313,6 +316,24 @@ def seed_demo_data(session: Session) -> dict[str, int]:
         for key, title in dataset_details.items()
     }
 
+    # The only demo dataset with a file. The file holds placeholder values
+    # for testing the dataset preview, not measurements.
+    datasets["preview"] = _get_or_create(
+        session,
+        Dataset,
+        DEMO_IDS["datasets"]["preview"],
+        title="Demo Prototype Preview Dataset",
+        description=(
+            "Demo / Prototype Data. A small placeholder file for testing the "
+            "dataset preview. The values are not measurements."
+        ),
+        file_type="csv",
+        file_name=DEMO_DATASET_FILE_NAME,
+        source_url=None,
+        verification_status="uploaded",
+        is_demo_data=True,
+    )
+
     media_details = {
         "climate-photo": ("Demo Climate Field Photo", "image"),
         "climate-diagram": ("Demo Climate Overview Diagram", "diagram"),
@@ -344,7 +365,7 @@ def seed_demo_data(session: Session) -> dict[str, int]:
             "topics": ("climate", "atmosphere"),
             "locations": ("coastal", "inland"),
             "publications": ("climate", "overview"),
-            "datasets": ("temperature", "atmosphere"),
+            "datasets": ("temperature", "atmosphere", "preview"),
             "reports": ("climate",),
             "media": ("climate-photo", "climate-diagram"),
         },
@@ -393,6 +414,7 @@ def seed_demo_data(session: Session) -> dict[str, int]:
         "sea-ice": ("sea-ice",),
         "atmosphere": ("atmosphere",),
         "biodiversity": ("biodiversity",),
+        "preview": ("climate",),
     }
     for key, topic_keys in dataset_links.items():
         _connect(datasets[key].research_topics, (topics[item] for item in topic_keys))

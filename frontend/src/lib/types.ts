@@ -64,6 +64,62 @@ export type Dataset = {
   is_demo_data: boolean;
 };
 
+export type DatasetListItem = Dataset & {
+  created_at: string;
+  has_file: boolean;
+  related_resources: RelatedDocumentResource[];
+  research_topics: ResearchTopic[];
+};
+
+export type DatasetFileInfo = {
+  file_name: string;
+  file_type: string | null;
+  size_bytes: number | null;
+  available: boolean;
+  previewable: boolean;
+  preview_message: string | null;
+};
+
+export type DatasetDetail = DatasetListItem & {
+  file: DatasetFileInfo | null;
+};
+
+export type FilterOption = {
+  id: string;
+  name: string;
+};
+
+export type DatasetFilters = {
+  file_types: string[];
+  verification_statuses: string[];
+  research_topics: FilterOption[];
+  expeditions: FilterOption[];
+};
+
+export type DatasetCell = number | string | null;
+
+export type DatasetColumn = {
+  name: string;
+  // Detected from the file contents, not official metadata.
+  type: "number" | "text" | "empty";
+  statistics: {
+    count: number;
+    minimum: number;
+    maximum: number;
+    mean: number;
+  } | null;
+};
+
+export type DatasetPreview = {
+  file_type: string;
+  columns: DatasetColumn[];
+  rows: DatasetCell[][];
+  row_count: number;
+  column_count: number;
+  preview_limit: number;
+  statistics_row_count: number;
+};
+
 export type MediaAsset = {
   id: string;
   title: string;

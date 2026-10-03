@@ -1,0 +1,25 @@
+sample_number,demo_value_a,demo_value_b,demo_group,data_label
+1,13,3.0,Group A,Demo / Prototype Data
+2,16,3.5,Group B,Demo / Prototype Data
+3,12,4.0,Group C,Demo / Prototype Data
+4,15,4.5,Group A,Demo / Prototype Data
+5,11,5.0,Group B,Demo / Prototype Data
+6,14,5.5,Group C,Demo / Prototype Data
+7,10,6.0,Group A,Demo / Prototype Data
+8,13,6.5,Group B,Demo / Prototype Data
+9,16,7.0,Group C,Demo / Prototype Data
+10,12,7.5,Group A,Demo / Prototype Data
+11,15,8.0,Group B,Demo / Prototype Data
+12,11,8.5,Group C,Demo / Prototype Data
+13,14,9.0,Group A,Demo / Prototype Data
+14,10,9.5,Group B,Demo / Prototype Data
+15,13,10.0,Group C,Demo / Prototype Data
+16,16,10.5,Group A,Demo / Prototype Data
+17,12,11.0,Group B,Demo / Prototype Data
+18,15,11.5,Group C,Demo / Prototype Data
+19,11,12.0,Group A,Demo / Prototype Data
+20,14,12.5,Group B,Demo / Prototype Data
+21,10,13.0,Group C,Demo / Prototype Data
+22,13,13.5,Group A,Demo / Prototype Data
+23,16,14.0,Group B,Demo / Prototype Data
+24,12,14.5,Group C,Demo / Prototype Data

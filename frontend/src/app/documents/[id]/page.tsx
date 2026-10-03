@@ -7,10 +7,8 @@ import { Icon, type IconName } from "@/components/icons";
 import { DataMessage } from "@/components/page-heading";
 import { RelatedResources } from "@/components/related-resources";
 import { OriginalSourceLink } from "@/components/source-link";
-import {
-  VerificationBadge,
-  verificationMeaning,
-} from "@/components/verification-badge";
+import { VerificationBadge } from "@/components/verification-badge";
+import { VerificationSummary } from "@/components/verification-summary";
 import { getApi } from "@/lib/api";
 import { formatDate, formatPages, formatStatus, safeExternalUrl } from "@/lib/format";
 import type { DocumentDetail } from "@/lib/types";
@@ -40,7 +38,6 @@ export default async function DocumentDetailPage({
 
   const document = result.data;
   const sourceUrl = safeExternalUrl(document.source_url);
-  const meaning = verificationMeaning(document.verification_status);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
@@ -123,21 +120,10 @@ export default async function DocumentDetailPage({
           </div>
 
           <aside className="h-fit space-y-5">
-            <section className="rounded-xl bg-slate-50 p-5">
-              <h2 className="text-sm font-semibold text-slate-950">Verification</h2>
-              <div className="mt-3">
-                <VerificationBadge status={document.verification_status} />
-              </div>
-              {meaning && (
-                <p className="mt-3 text-sm leading-6 text-slate-600">{meaning}</p>
-              )}
-              {document.is_demo_data && (
-                <p className="mt-3 border-t border-slate-200 pt-3 text-sm leading-6 text-slate-600">
-                  This is demo data. It is prototype content, not real scientific
-                  information.
-                </p>
-              )}
-            </section>
+            <VerificationSummary
+              isDemoData={document.is_demo_data}
+              status={document.verification_status}
+            />
             <AboutSources />
           </aside>
         </div>

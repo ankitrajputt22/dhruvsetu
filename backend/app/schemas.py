@@ -105,6 +105,52 @@ class DatasetSummary(ApiSchema):
     is_demo_data: bool
 
 
+class FilterOption(ApiSchema):
+    id: str
+    name: str
+
+
+class DatasetFilters(ApiSchema):
+    """Filter values that at least one dataset actually uses."""
+
+    file_types: list[str]
+    verification_statuses: list[str]
+    research_topics: list[FilterOption]
+    expeditions: list[FilterOption]
+
+
+class DatasetFileInfo(ApiSchema):
+    file_name: str
+    file_type: str | None
+    size_bytes: int | None
+    available: bool
+    previewable: bool
+    preview_message: str | None
+
+
+class DatasetColumnStatistics(ApiSchema):
+    count: int
+    minimum: float
+    maximum: float
+    mean: float
+
+
+class DatasetColumn(ApiSchema):
+    name: str
+    type: str
+    statistics: DatasetColumnStatistics | None
+
+
+class DatasetPreview(ApiSchema):
+    file_type: str
+    columns: list[DatasetColumn]
+    rows: list[list[int | float | str | None]]
+    row_count: int
+    column_count: int
+    preview_limit: int
+    statistics_row_count: int
+
+
 class MediaAssetSummary(ApiSchema):
     id: str
     title: str
@@ -150,6 +196,17 @@ class DocumentDetail(DocumentSummary):
     created_at: datetime
     first_page: int | None
     last_page: int | None
+
+
+class DatasetListItem(DatasetSummary):
+    created_at: datetime
+    has_file: bool
+    related_resources: list[RelatedDocumentResource]
+    research_topics: list[ResearchTopicSummary]
+
+
+class DatasetDetail(DatasetListItem):
+    file: DatasetFileInfo | None
 
 
 class AssistantQuestion(BaseModel):
