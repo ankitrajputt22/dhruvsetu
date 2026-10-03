@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import DocumentChunk
+from app.models import Document, DocumentChunk
+from app.provenance import related_document_resources
+from app.schemas import RelatedDocumentResource
 from app.search.semantic import DOCUMENT_CHUNK_TYPE, search_semantic_index
 
 
@@ -23,6 +26,9 @@ class RetrievedSourceChunk:
     source_url: str | None = None
     verification_status: str | None = None
     is_demo_data: bool = False
+    section_name: str | None = None
+    publication_date: date | None = None
+    related_resources: tuple[RelatedDocumentResource, ...] = ()
 
 
 def retrieve_source_chunks(
@@ -46,7 +52,13 @@ def retrieve_source_chunks(
     chunks = session.scalars(
         select(DocumentChunk)
         .where(DocumentChunk.id.in_(chunk_ids))
-        .options(selectinload(DocumentChunk.document))
+        .options(
+            selectinload(DocumentChunk.document).options(
+                selectinload(Document.publication),
+                selectinload(Document.report),
+                selectinload(Document.expedition),
+            )
+        )
     ).all()
     chunks_by_id = {chunk.id: chunk for chunk in chunks}
 
@@ -69,6 +81,9 @@ def retrieve_source_chunks(
                 source_url=chunk.document.source_url,
                 verification_status=chunk.document.verification_status,
                 is_demo_data=chunk.document.is_demo_data,
+                section_name=chunk.section_name,
+                publication_date=chunk.document.publication_date,
+                related_resources=tuple(related_document_resources(chunk.document)),
             )
         )
     return retrieved

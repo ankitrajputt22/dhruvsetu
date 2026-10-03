@@ -1,3 +1,5 @@
+from dataclasses import replace
+from datetime import date
 from types import SimpleNamespace
 
 import anthropic
@@ -9,6 +11,7 @@ from app.assistant import service
 from app.assistant.service import INSUFFICIENT_EVIDENCE_MESSAGE, SYSTEM_PROMPT
 from app.ingestion.retrieval import RetrievedSourceChunk
 from app.main import app
+from app.schemas import RelatedDocumentResource
 from app.search.semantic import SemanticSearchUnavailable
 
 client = TestClient(app)
@@ -102,15 +105,64 @@ def test_valid_question_returns_answer_with_sources(assistant) -> None:
             "file_type": "txt",
             "source_type": "prototype",
             "page_number": 2,
+            "section_name": None,
             "source_url": None,
+            "publication_date": None,
             "verification_status": "uploaded",
             "is_demo_data": True,
+            "related_resources": [],
+            "match_reason": "Closest match to your question",
             "href": "/documents/document-1",
         }
     ]
     assert assistant.retrieval_calls == [
         ("What makes a climate record?", service.MAX_SOURCE_CHUNKS)
     ]
+
+
+def test_sources_keep_backend_provenance(assistant) -> None:
+    related = RelatedDocumentResource(
+        id="expedition-1",
+        type="expedition",
+        title="Demo Sea Ice Observation Expedition",
+        href="/expeditions/expedition-1",
+    )
+    assistant.chunks = [
+        replace(
+            _chunk(rank=1, score=0.7, page_number=4),
+            source_url="https://example.org/report.pdf",
+            publication_date=date(2024, 3, 15),
+            verification_status="verified",
+            is_demo_data=False,
+            section_name="Methods",
+            related_resources=(related,),
+        ),
+        _chunk(rank=2, score=0.5, page_number=None),
+    ]
+
+    response = client.post(ASK_URL, json={"question": "What is recorded?"})
+
+    assert response.status_code == 200
+    first, second = response.json()["sources"]
+    assert first["page_number"] == 4
+    assert first["section_name"] == "Methods"
+    assert first["source_url"] == "https://example.org/report.pdf"
+    assert first["publication_date"] == "2024-03-15"
+    assert first["verification_status"] == "verified"
+    assert first["is_demo_data"] is False
+    assert first["related_resources"] == [related.model_dump()]
+    assert first["match_reason"] == "Closest match to your question"
+
+    # Missing optional details stay empty instead of being filled in.
+    assert second["page_number"] is None
+    assert second["source_url"] is None
+    assert second["publication_date"] is None
+    assert second["related_resources"] == []
+    assert second["match_reason"] == "Also related to your question"
+
+    for source in (first, second):
+        assert "score" not in source
+        assert "text" not in source
 
 
 def test_retrieved_sources_are_sent_to_the_model(assistant) -> None:

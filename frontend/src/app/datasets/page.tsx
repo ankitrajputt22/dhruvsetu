@@ -4,7 +4,8 @@ import { DemoLabel } from "@/components/demo-label";
 import { Icon } from "@/components/icons";
 import { PageHero } from "@/components/page-hero";
 import { DataMessage } from "@/components/page-heading";
-import { StatusBadge } from "@/components/status-badge";
+import { OriginalSourceLink } from "@/components/source-link";
+import { VerificationBadge } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
 import type { Dataset } from "@/lib/types";
 
@@ -55,8 +56,13 @@ export default async function DatasetsPage() {
                     <p className="mt-3 flex-1 text-sm leading-6 text-slate-600">
                       {dataset.description ?? "No description is available."}
                     </p>
-                    <div className="mt-5 border-t border-slate-100 pt-4">
-                      <StatusBadge status={dataset.verification_status} />
+                    <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 pt-4">
+                      <VerificationBadge status={dataset.verification_status} />
+                      <OriginalSourceLink
+                        className="text-xs"
+                        title={dataset.title}
+                        url={dataset.source_url}
+                      />
                     </div>
                   </div>
                 </article>

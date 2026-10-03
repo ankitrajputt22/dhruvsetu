@@ -1,13 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AboutSources } from "@/components/about-sources";
 import { DemoLabel } from "@/components/demo-label";
 import { Icon, type IconName } from "@/components/icons";
 import { DataMessage } from "@/components/page-heading";
-import { StatusBadge } from "@/components/status-badge";
+import { RelatedResources } from "@/components/related-resources";
+import { OriginalSourceLink } from "@/components/source-link";
+import {
+  VerificationBadge,
+  verificationMeaning,
+} from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
-import { formatDate, formatStatus } from "@/lib/format";
+import { formatDate, formatPages, formatStatus, safeExternalUrl } from "@/lib/format";
 import type { DocumentDetail } from "@/lib/types";
+
+const NOT_AVAILABLE = "Not available";
 
 export default async function DocumentDetailPage({
   params,
@@ -31,6 +39,9 @@ export default async function DocumentDetailPage({
   }
 
   const document = result.data;
+  const sourceUrl = safeExternalUrl(document.source_url);
+  const meaning = verificationMeaning(document.verification_status);
+
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
       <Link className="inline-flex items-center gap-2 text-sm font-semibold text-sky-800 hover:underline" href="/documents">
@@ -46,63 +57,88 @@ export default async function DocumentDetailPage({
             <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-800">
               {document.file_type} source document
             </p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-4xl">
+            <h1 className="mt-3 break-words text-3xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-4xl">
               {document.title}
             </h1>
             <p className="mt-3 break-all text-sm text-slate-500">{document.file_name}</p>
           </div>
-          {document.is_demo_data && <DemoLabel />}
+          <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+            {document.is_demo_data && <DemoLabel />}
+            <VerificationBadge status={document.verification_status} />
+          </div>
         </header>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_18rem]">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-950">Source information</h2>
-            <dl className="mt-5 grid gap-5 sm:grid-cols-2">
-              <Detail icon="document" label="Source type" value={formatStatus(document.source_type)} />
-              <Detail
-                icon="calendar"
-                label="Publication date"
-                value={document.publication_date ? formatDate(document.publication_date) : "Not listed"}
-              />
-              <Detail icon="status" label="Verification" value={formatStatus(document.verification_status)} />
-              <Detail icon="publication" label="Source parts" value={String(document.chunk_count)} />
-            </dl>
+        <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem]">
+          <div className="min-w-0">
+            <section>
+              <h2 className="text-xl font-semibold text-slate-950">Source information</h2>
+              <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+                <Detail icon="document" label="Source type" value={formatStatus(document.source_type)} />
+                <Detail icon="publication" label="Document type" value={`${document.file_type.toUpperCase()} document`} plain />
+                <Detail
+                  icon="calendar"
+                  label="Publication date"
+                  value={document.publication_date ? formatDate(document.publication_date) : NOT_AVAILABLE}
+                />
+                <Detail
+                  icon="publication"
+                  label="Pages"
+                  value={formatPages(document.first_page, document.last_page) ?? NOT_AVAILABLE}
+                />
+                <Detail icon="dataset" label="Source parts" value={String(document.chunk_count)} />
+                <Detail
+                  icon="calendar"
+                  label="Added to DhruvSetu"
+                  value={formatDate(document.created_at.slice(0, 10))}
+                />
+              </dl>
+            </section>
 
-            {document.related_resources.length > 0 && (
-              <section className="mt-10 border-t border-slate-200 pt-8">
-                <h2 className="text-xl font-semibold text-slate-950">Related records</h2>
-                <ul className="mt-4 space-y-3">
-                  {document.related_resources.map((resource) => (
-                    <li key={`${resource.type}-${resource.id}`} className="rounded-lg bg-slate-50 px-4 py-3">
-                      <span className="text-xs font-semibold uppercase tracking-wide text-sky-800">
-                        {resource.type}
-                      </span>
-                      <p className="mt-1 font-medium text-slate-950">{resource.title}</p>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            <section className="mt-10 border-t border-slate-200 pt-8">
+              <h2 className="text-xl font-semibold text-slate-950">Original source</h2>
+              {sourceUrl === null ? (
+                <p className="mt-3 text-sm text-slate-600">{NOT_AVAILABLE}</p>
+              ) : (
+                <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
+                  <p className="break-all text-sm text-slate-600">{sourceUrl}</p>
+                  <div className="mt-2">
+                    <OriginalSourceLink title={document.title} url={sourceUrl} />
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <section className="mt-10 border-t border-slate-200 pt-8">
+              <h2 className="text-xl font-semibold text-slate-950">Related records</h2>
+              {document.related_resources.length === 0 ? (
+                <p className="mt-3 text-sm text-slate-600">
+                  This document is not linked to an expedition, publication, or report.
+                </p>
+              ) : (
+                <div className="mt-3 rounded-lg bg-slate-50 px-4 py-3">
+                  <RelatedResources resources={document.related_resources} />
+                </div>
+              )}
+            </section>
           </div>
 
-          <aside className="h-fit rounded-xl bg-slate-50 p-5">
-            <p className="text-sm font-semibold text-slate-950">Document status</p>
-            <div className="mt-4">
-              <StatusBadge status={document.verification_status} />
-            </div>
-            <p className="mt-4 text-sm leading-6 text-slate-600">
-              Text is split into source-linked parts for search and retrieval.
-            </p>
-            {document.source_url && (
-              <a
-                className="mt-5 inline-flex text-sm font-semibold text-sky-800 hover:underline"
-                href={document.source_url}
-                rel="noreferrer"
-                target="_blank"
-              >
-                Open source website <span aria-hidden="true">↗</span>
-              </a>
-            )}
+          <aside className="h-fit space-y-5">
+            <section className="rounded-xl bg-slate-50 p-5">
+              <h2 className="text-sm font-semibold text-slate-950">Verification</h2>
+              <div className="mt-3">
+                <VerificationBadge status={document.verification_status} />
+              </div>
+              {meaning && (
+                <p className="mt-3 text-sm leading-6 text-slate-600">{meaning}</p>
+              )}
+              {document.is_demo_data && (
+                <p className="mt-3 border-t border-slate-200 pt-3 text-sm leading-6 text-slate-600">
+                  This is demo data. It is prototype content, not real scientific
+                  information.
+                </p>
+              )}
+            </section>
+            <AboutSources />
           </aside>
         </div>
       </div>
@@ -110,13 +146,23 @@ export default async function DocumentDetailPage({
   );
 }
 
-function Detail({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+function Detail({
+  icon,
+  label,
+  value,
+  plain = false,
+}: {
+  icon: IconName;
+  label: string;
+  value: string;
+  plain?: boolean;
+}) {
   return (
     <div className="flex gap-3 rounded-lg border border-slate-200 p-4">
       <Icon name={icon} className="mt-0.5 h-4 w-4 shrink-0 text-sky-700" />
-      <div>
+      <div className="min-w-0">
         <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</dt>
-        <dd className="mt-1 capitalize text-slate-900">{value}</dd>
+        <dd className={`mt-1 break-words text-slate-900 ${plain ? "" : "capitalize"}`}>{value}</dd>
       </div>
     </div>
   );

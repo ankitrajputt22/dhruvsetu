@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -30,6 +30,7 @@ class SearchResult(ApiSchema):
     is_demo_data: bool
     verification_status: str | None
     href: str | None
+    source_url: str | None
     match_reason: str
     search_mode: SearchMode
 
@@ -77,6 +78,8 @@ class PublicationSummary(ApiSchema):
     id: str
     title: str
     publication_year: int | None
+    doi: str | None
+    source_url: str | None
     summary: str | None
     verification_status: str
     is_demo_data: bool
@@ -86,6 +89,7 @@ class ReportSummary(ApiSchema):
     id: str
     title: str
     publication_date: date | None
+    source_url: str | None
     summary: str | None
     verification_status: str
     is_demo_data: bool
@@ -96,6 +100,7 @@ class DatasetSummary(ApiSchema):
     title: str
     description: str | None
     file_type: str | None
+    source_url: str | None
     verification_status: str
     is_demo_data: bool
 
@@ -113,39 +118,50 @@ class RelatedDocumentResource(ApiSchema):
     id: str
     type: str
     title: str
+    href: str | None = None
 
 
-class DocumentSummary(ApiSchema):
-    id: str
+class SourceProvenance(ApiSchema):
+    """Source details shown wherever a document is used as evidence."""
+
     title: str
-    file_name: str
+    file_type: str | None
+    source_type: str | None
+    source_url: str | None
+    publication_date: date | None
+    verification_status: str | None
+    is_demo_data: bool
+    related_resources: list[RelatedDocumentResource]
+
+
+class LinkedDocument(SourceProvenance):
+    id: str
     file_type: str
     source_type: str
-    publication_date: date | None
     verification_status: str
-    is_demo_data: bool
+
+
+class DocumentSummary(LinkedDocument):
+    file_name: str
     chunk_count: int
 
 
 class DocumentDetail(DocumentSummary):
-    source_url: str | None
-    related_resources: list[RelatedDocumentResource]
+    created_at: datetime
+    first_page: int | None
+    last_page: int | None
 
 
 class AssistantQuestion(BaseModel):
     question: str = Field(max_length=500)
 
 
-class AssistantSource(ApiSchema):
+class AssistantSource(SourceProvenance):
     number: int
     document_id: str
-    title: str
-    file_type: str | None
-    source_type: str | None
     page_number: int | None
-    source_url: str | None
-    verification_status: str | None
-    is_demo_data: bool
+    section_name: str | None
+    match_reason: str
     href: str
 
 
@@ -162,3 +178,4 @@ class ExpeditionDetail(ExpeditionSummary):
     reports: list[ReportSummary]
     datasets: list[DatasetSummary]
     media_assets: list[MediaAssetSummary]
+    source_documents: list[LinkedDocument] = []

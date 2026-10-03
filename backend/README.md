@@ -107,6 +107,33 @@ python -m app.search.build_index
 The prototype does not use OCR, accept public uploads, call an LLM, or generate
 answers. Source retrieval returns original text chunks for later RAG work.
 
+## Sources and verification
+
+Every document keeps its source details: title, source type, file type, page
+numbers, original source URL, publication date, and links to a related
+expedition, publication, or report. The documents API, the expedition detail
+API, and assistant sources all return these details from MySQL. Missing
+details are returned as empty values and are never filled in.
+
+Verification status is one of:
+
+- `uploaded` - added to the repository but not yet reviewed (the default)
+- `reviewed` - checked by a person
+- `verified` - source details and content confirmed for the prototype
+
+Set the status when ingesting a document. Ingestion never marks a document as
+reviewed or verified on its own.
+
+```bash
+python -m app.ingestion.ingest /path/to/source.pdf \
+  --title "Source title" \
+  --source-url "https://example.org/source.pdf" \
+  --verification-status reviewed
+```
+
+The source URL must start with `http://` or `https://`. Demo data is a separate
+flag (`--demo`) and does not replace the verification status.
+
 ## AI assistant
 
 The assistant answers questions using source chunks from the repository. It
