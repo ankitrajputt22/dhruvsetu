@@ -5,7 +5,11 @@ import { DataMessage } from "@/components/page-heading";
 import { SearchForm } from "@/components/search-form";
 import { getApi } from "@/lib/api";
 import { formatStatus } from "@/lib/format";
-import type { SearchResourceType, SearchResult } from "@/lib/types";
+import type {
+  SearchMode,
+  SearchResourceType,
+  SearchResult,
+} from "@/lib/types";
 
 const filters: { label: string; value: SearchResourceType | null }[] = [
   { label: "All", value: null },
@@ -21,12 +25,24 @@ const allowedTypes = new Set(
   filters.flatMap((filter) => (filter.value === null ? [] : [filter.value])),
 );
 
+const modes: { label: string; value: SearchMode }[] = [
+  { label: "Keyword", value: "keyword" },
+  { label: "Semantic", value: "semantic" },
+];
+
 function firstValue(value: string | string[] | undefined): string {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
-function filterHref(query: string, type: SearchResourceType | null): string {
-  const parameters = new URLSearchParams({ q: query });
+function searchHref(
+  query: string,
+  type: SearchResourceType | null,
+  mode: SearchMode,
+): string {
+  const parameters = new URLSearchParams({ mode });
+  if (query) {
+    parameters.set("q", query);
+  }
   if (type !== null) {
     parameters.set("type", type);
   }
@@ -39,6 +55,7 @@ export default async function SearchPage({
   searchParams: Promise<{
     q?: string | string[];
     type?: string | string[];
+    mode?: string | string[];
   }>;
 }) {
   const parameters = await searchParams;
@@ -47,8 +64,12 @@ export default async function SearchPage({
   const activeType = allowedTypes.has(requestedType as SearchResourceType)
     ? (requestedType as SearchResourceType)
     : null;
+  const requestedMode = firstValue(parameters.mode);
+  const activeMode: SearchMode =
+    requestedMode === "semantic" ? "semantic" : "keyword";
 
   const apiParameters = new URLSearchParams({ q: query });
+  apiParameters.set("mode", activeMode);
   if (activeType !== null) {
     apiParameters.set("type", activeType);
   }
@@ -72,19 +93,48 @@ export default async function SearchPage({
           reports.
         </p>
         <div className="mt-7">
-          <SearchForm defaultQuery={query} />
+          <SearchForm defaultQuery={query} mode={activeMode} />
         </div>
       </header>
 
+      <nav className="mt-7" aria-label="Search mode">
+        <p className="mb-2 text-sm font-medium text-slate-700">Search mode</p>
+        <ul className="flex gap-2">
+          {modes.map((mode) => {
+            const isActive = mode.value === activeMode;
+            return (
+              <li key={mode.value}>
+                <Link
+                  href={searchHref(query, activeType, mode.value)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`inline-flex rounded-sm border px-3 py-2 text-sm font-medium ${
+                    isActive
+                      ? "border-sky-800 bg-sky-800 text-white"
+                      : "border-slate-300 bg-white text-slate-700 hover:border-sky-700 hover:text-sky-800"
+                  }`}
+                >
+                  {mode.label}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+        {activeMode === "semantic" && (
+          <p className="mt-3 text-sm text-slate-600">
+            Semantic search also finds information with a similar meaning.
+          </p>
+        )}
+      </nav>
+
       {query && (
-        <nav className="mt-7" aria-label="Search result filters">
+        <nav className="mt-6" aria-label="Search result filters">
           <ul className="flex flex-wrap gap-2">
             {filters.map((filter) => {
               const isActive = filter.value === activeType;
               return (
                 <li key={filter.label}>
                   <Link
-                    href={filterHref(query, filter.value)}
+                    href={searchHref(query, filter.value, activeMode)}
                     aria-current={isActive ? "page" : undefined}
                     className={`inline-flex rounded-sm border px-3 py-2 text-sm font-medium ${
                       isActive
@@ -104,6 +154,11 @@ export default async function SearchPage({
       <section className="mt-8" aria-live="polite">
         {!query ? (
           <DataMessage>Enter a search term to find information.</DataMessage>
+        ) : activeMode === "semantic" && result?.status === 503 ? (
+          <DataMessage>
+            Semantic search is not ready right now. You can still use keyword
+            search.
+          </DataMessage>
         ) : searchResults == null ? (
           <DataMessage>We could not complete the search right now.</DataMessage>
         ) : searchResults.length === 0 ? (

@@ -13,12 +13,17 @@ from app.models import (
     ResearchTopic,
     Scientist,
 )
+from app.search.semantic import (
+    SemanticSearchUnavailable,
+    search_semantic_index,
+)
 from app.schemas import (
     DatasetSummary,
     ExpeditionDetail,
     ExpeditionSummary,
     PublicationSummary,
     ResearchTopicSummary,
+    SearchMode,
     SearchResourceType,
     SearchResult,
     ScientistDetail,
@@ -84,6 +89,7 @@ def _to_search_results(
                 match_reason=(
                     "Matched title" if match_rank == 0 else "Matched description"
                 ),
+                search_mode=SearchMode.keyword,
             )
         )
     return results
@@ -141,12 +147,59 @@ SEARCH_SOURCES = {
 }
 
 
+def _semantic_results(
+    db: Session,
+    *,
+    query: str,
+    resource_type: SearchResourceType | None,
+) -> list[SearchResult]:
+    matches = search_semantic_index(query, resource_type=resource_type)
+    results = []
+    for match in matches:
+        (
+            model,
+            _,
+            _,
+            title_attribute,
+            description_attribute,
+            href_template,
+        ) = SEARCH_SOURCES[match.resource_type]
+        record = db.get(model, match.record_id)
+        if record is None:
+            continue
+
+        title = getattr(record, title_attribute)
+        is_demo_data = getattr(record, "is_demo_data", None)
+        if is_demo_data is None:
+            is_demo_data = title.startswith(("Demo ", "Prototype "))
+
+        results.append(
+            SearchResult(
+                id=record.id,
+                type=match.resource_type,
+                title=title,
+                description=getattr(record, description_attribute),
+                is_demo_data=bool(is_demo_data),
+                verification_status=getattr(record, "verification_status", None),
+                href=(
+                    href_template.format(id=record.id)
+                    if href_template is not None
+                    else None
+                ),
+                match_reason="Related to your search",
+                search_mode=SearchMode.semantic,
+            )
+        )
+    return results
+
+
 @router.get("/search", response_model=list[SearchResult])
 def search(
     q: Annotated[str, Query(max_length=100)],
     resource_type: Annotated[
         SearchResourceType | None, Query(alias="type")
     ] = None,
+    mode: Annotated[SearchMode, Query()] = SearchMode.keyword,
     db: Session = Depends(get_db),
 ) -> list[SearchResult]:
     query = q.strip()
@@ -155,6 +208,22 @@ def search(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Search query cannot be empty",
         )
+
+    if mode == SearchMode.semantic:
+        try:
+            return _semantic_results(
+                db,
+                query=query,
+                resource_type=resource_type,
+            )
+        except SemanticSearchUnavailable as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=(
+                    "Semantic search is not ready right now. "
+                    "You can still use keyword search."
+                ),
+            ) from error
 
     pattern = f"%{_escape_like(query.casefold())}%"
     requested_types = (

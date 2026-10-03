@@ -1,9 +1,13 @@
+import type { SearchMode } from "@/lib/types";
+
 export function SearchForm({
   defaultQuery = "",
   compact = false,
+  mode = "keyword",
 }: {
   defaultQuery?: string;
   compact?: boolean;
+  mode?: SearchMode;
 }) {
   return (
     <form
@@ -12,6 +16,7 @@ export function SearchForm({
       role="search"
       className={`flex w-full ${compact ? "max-w-sm" : "max-w-2xl"}`}
     >
+      <input type="hidden" name="mode" value={mode} />
       <label className="sr-only" htmlFor={compact ? "site-search" : "page-search"}>
         Search DhruvSetu
       </label>
