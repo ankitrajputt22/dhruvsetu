@@ -8,11 +8,11 @@ export function PageHeading({
   description: string;
 }) {
   return (
-    <header className="border-b border-slate-200 pb-8">
-      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-sky-800">
+    <header className="border-b border-slate-200 pb-7">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-800">
         {eyebrow}
       </p>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+      <h1 className="mt-3 text-4xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-5xl">
         {title}
       </h1>
       <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-600">
@@ -24,7 +24,7 @@ export function PageHeading({
 
 export function DataMessage({ children }: { children: React.ReactNode }) {
   return (
-    <p className="border-l-4 border-slate-300 bg-white px-5 py-4 text-slate-600">
+    <p className="rounded-lg border border-slate-200 bg-white px-5 py-4 text-slate-600 shadow-sm">
       {children}
     </p>
   );
