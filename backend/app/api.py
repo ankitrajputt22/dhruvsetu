@@ -1,6 +1,8 @@
-from typing import Annotated
+from dataclasses import asdict
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import FileResponse
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -12,7 +14,16 @@ from app.assistant.service import (
     answer_question,
 )
 from app.database import get_db
+from app.datasets.files import find_dataset_file
+from app.datasets.preview import (
+    PreviewMalformed,
+    PreviewTooLarge,
+    PreviewUnsupported,
+    build_preview,
+    preview_unavailable_reason,
+)
 from app.models import (
+    VERIFICATION_STATUSES,
     Dataset,
     Document,
     DocumentChunk,
@@ -22,7 +33,7 @@ from app.models import (
     ResearchTopic,
     Scientist,
 )
-from app.provenance import related_document_resources
+from app.provenance import RELATED_RESOURCE_ROUTES, related_document_resources
 from app.search.semantic import (
     SemanticSearchUnavailable,
     search_semantic_index,
@@ -31,13 +42,20 @@ from app.schemas import (
     AssistantAnswer,
     AssistantQuestion,
     AssistantSource,
+    DatasetDetail,
+    DatasetFileInfo,
+    DatasetFilters,
+    DatasetListItem,
+    DatasetPreview,
     DatasetSummary,
     DocumentDetail,
     DocumentSummary,
     ExpeditionDetail,
     ExpeditionSummary,
+    FilterOption,
     LinkedDocument,
     PublicationSummary,
+    RelatedDocumentResource,
     ResearchTopicSummary,
     SearchMode,
     SearchResourceType,
@@ -179,7 +197,7 @@ SEARCH_SOURCES = {
         Dataset.description,
         "title",
         "description",
-        "/datasets",
+        "/datasets/{id}",
     ),
     SearchResourceType.topic: (
         ResearchTopic,
@@ -509,10 +527,200 @@ def list_publications(db: Session = Depends(get_db)) -> list[PublicationSummary]
     return [PublicationSummary.model_validate(item) for item in publications]
 
 
-@router.get("/datasets", response_model=list[DatasetSummary])
-def list_datasets(db: Session = Depends(get_db)) -> list[DatasetSummary]:
-    datasets = db.scalars(select(Dataset).order_by(Dataset.title)).all()
-    return [DatasetSummary.model_validate(item) for item in datasets]
+DATASET_RELATIONSHIPS = (
+    selectinload(Dataset.expeditions),
+    selectinload(Dataset.research_topics),
+)
+
+
+def _dataset_list_item(dataset: Dataset) -> DatasetListItem:
+    return DatasetListItem(
+        **DatasetSummary.model_validate(dataset).model_dump(),
+        created_at=dataset.created_at,
+        has_file=find_dataset_file(dataset) is not None,
+        related_resources=[
+            RelatedDocumentResource(
+                id=expedition.id,
+                type="expedition",
+                title=expedition.name,
+                href=RELATED_RESOURCE_ROUTES["expedition"].format(id=expedition.id),
+            )
+            for expedition in sorted(dataset.expeditions, key=lambda item: item.name)
+        ],
+        research_topics=[
+            ResearchTopicSummary.model_validate(topic)
+            for topic in sorted(dataset.research_topics, key=lambda item: item.name)
+        ],
+    )
+
+
+def _dataset_file_info(dataset: Dataset) -> DatasetFileInfo | None:
+    if not dataset.file_name:
+        return None
+
+    stored = find_dataset_file(dataset)
+    if stored is None:
+        return DatasetFileInfo(
+            file_name=dataset.file_name,
+            file_type=dataset.file_type,
+            size_bytes=None,
+            available=False,
+            previewable=False,
+            preview_message="The file for this dataset could not be found.",
+        )
+
+    reason = preview_unavailable_reason(stored)
+    return DatasetFileInfo(
+        file_name=stored.file_name,
+        file_type=stored.file_type,
+        size_bytes=stored.size_bytes,
+        available=True,
+        previewable=reason is None,
+        preview_message=reason,
+    )
+
+
+def _get_dataset(db: Session, dataset_id: str) -> Dataset:
+    dataset = db.scalar(
+        select(Dataset)
+        .where(Dataset.id == dataset_id)
+        .options(*DATASET_RELATIONSHIPS)
+    )
+    if dataset is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Dataset not found",
+        )
+    return dataset
+
+
+def _get_dataset_file(db: Session, dataset_id: str):
+    dataset = _get_dataset(db, dataset_id)
+    if not dataset.file_name:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This dataset has no attached file.",
+        )
+    stored = find_dataset_file(dataset)
+    if stored is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="The file for this dataset could not be found.",
+        )
+    return stored
+
+
+@router.get("/datasets", response_model=list[DatasetListItem])
+def list_datasets(
+    q: Annotated[str | None, Query(max_length=100)] = None,
+    topic: Annotated[str | None, Query(max_length=36)] = None,
+    expedition: Annotated[str | None, Query(max_length=36)] = None,
+    file_type: Annotated[str | None, Query(max_length=50)] = None,
+    verification_status: Annotated[
+        Literal["uploaded", "reviewed", "verified"] | None, Query()
+    ] = None,
+    db: Session = Depends(get_db),
+) -> list[DatasetListItem]:
+    statement = (
+        select(Dataset).options(*DATASET_RELATIONSHIPS).order_by(Dataset.title)
+    )
+    if q and q.strip():
+        pattern = f"%{_escape_like(q.strip().casefold())}%"
+        statement = statement.where(
+            or_(
+                func.lower(Dataset.title).like(pattern, escape="\\"),
+                func.lower(Dataset.description).like(pattern, escape="\\"),
+            )
+        )
+    if topic:
+        statement = statement.where(
+            Dataset.research_topics.any(ResearchTopic.id == topic)
+        )
+    if expedition:
+        statement = statement.where(Dataset.expeditions.any(Expedition.id == expedition))
+    if file_type:
+        statement = statement.where(
+            func.lower(Dataset.file_type) == file_type.strip().casefold()
+        )
+    if verification_status:
+        statement = statement.where(
+            Dataset.verification_status == verification_status
+        )
+
+    return [_dataset_list_item(item) for item in db.scalars(statement).all()]
+
+
+@router.get("/datasets/filters", response_model=DatasetFilters)
+def get_dataset_filters(db: Session = Depends(get_db)) -> DatasetFilters:
+    file_types = db.scalars(
+        select(func.lower(Dataset.file_type))
+        .where(Dataset.file_type.is_not(None))
+        .distinct()
+    ).all()
+    used_statuses = set(
+        db.scalars(select(Dataset.verification_status).distinct()).all()
+    )
+    topics = db.scalars(
+        select(ResearchTopic)
+        .where(ResearchTopic.datasets.any())
+        .order_by(ResearchTopic.name)
+    ).all()
+    expeditions = db.scalars(
+        select(Expedition).where(Expedition.datasets.any()).order_by(Expedition.name)
+    ).all()
+
+    return DatasetFilters(
+        file_types=sorted(file_types),
+        verification_statuses=[
+            item for item in VERIFICATION_STATUSES if item in used_statuses
+        ],
+        research_topics=[FilterOption(id=item.id, name=item.name) for item in topics],
+        expeditions=[FilterOption(id=item.id, name=item.name) for item in expeditions],
+    )
+
+
+@router.get("/datasets/{dataset_id}", response_model=DatasetDetail)
+def get_dataset(dataset_id: str, db: Session = Depends(get_db)) -> DatasetDetail:
+    dataset = _get_dataset(db, dataset_id)
+    return DatasetDetail(
+        **_dataset_list_item(dataset).model_dump(),
+        file=_dataset_file_info(dataset),
+    )
+
+
+@router.get("/datasets/{dataset_id}/preview", response_model=DatasetPreview)
+def preview_dataset(dataset_id: str, db: Session = Depends(get_db)) -> DatasetPreview:
+    stored = _get_dataset_file(db, dataset_id)
+    try:
+        preview = build_preview(stored)
+    except PreviewUnsupported as error:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=str(error),
+        ) from error
+    except PreviewTooLarge as error:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=str(error),
+        ) from error
+    except PreviewMalformed as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail=str(error),
+        ) from error
+    return DatasetPreview.model_validate(asdict(preview))
+
+
+@router.get("/datasets/{dataset_id}/download")
+def download_dataset(dataset_id: str, db: Session = Depends(get_db)) -> FileResponse:
+    stored = _get_dataset_file(db, dataset_id)
+    # Always sent as a plain download so the browser never opens or runs it.
+    return FileResponse(
+        stored.path,
+        media_type="application/octet-stream",
+        filename=stored.file_name,
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
 
 
 @router.get("/topics", response_model=list[ResearchTopicSummary])

@@ -107,6 +107,37 @@ python -m app.search.build_index
 The prototype does not use OCR, accept public uploads, call an LLM, or generate
 answers. Source retrieval returns original text chunks for later RAG work.
 
+## Datasets
+
+Dataset records can be metadata only, or they can have one data file in
+`backend/data/datasets`. Apply the migration first (`alembic upgrade head`),
+then attach a file to an existing dataset record:
+
+```bash
+python -m app.datasets.attach "existing-dataset-id" /path/to/data.csv
+```
+
+CSV and JSON files (a list of records) can be previewed. TXT, XLSX, NC, H5 and
+ZIP files can be stored and downloaded but are not previewed. Other file types
+are rejected.
+
+- `GET /api/datasets` lists datasets. Optional filters: `q`, `topic`,
+  `expedition`, `file_type`, `verification_status`.
+- `GET /api/datasets/filters` returns the filter values that datasets use.
+- `GET /api/datasets/{id}` returns the metadata, related expedition, research
+  topics, and file details.
+- `GET /api/datasets/{id}/preview` returns the first 50 rows, up to 30 columns,
+  the detected column types, and simple statistics for number columns.
+- `GET /api/datasets/{id}/download` sends the attached file.
+
+Files larger than 5 MB are not previewed, and statistics use at most the first
+5000 rows. The limits are at the top of `app/datasets/preview.py`. Column types
+and statistics are calculated from the file and are not official metadata.
+
+The seed adds one small file, `demo-prototype-preview-sample.csv`, to show the
+preview. Its values are placeholders marked `Demo / Prototype Data`, not
+measurements. Run `python -m app.seed` and rebuild the semantic index to add it.
+
 ## Sources and verification
 
 Every document keeps its source details: title, source type, file type, page

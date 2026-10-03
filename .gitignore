@@ -5,3 +5,5 @@ backend/data/documents/*
 !backend/data/documents/demo-antarctic-climate.txt
 !backend/data/documents/demo-polar-biodiversity.txt
 !backend/data/documents/demo-sea-ice-observations.txt
+backend/data/datasets/*
+!backend/data/datasets/demo-prototype-preview-sample.csv

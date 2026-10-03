@@ -83,7 +83,7 @@ export default async function Home() {
       ? {
           type: "Dataset",
           title: datasets.data[0].title,
-          href: "/datasets",
+          href: `/datasets/${datasets.data[0].id}`,
           icon: "dataset" as const,
           metadata: datasets.data[0].file_type ?? "Metadata only",
           isDemoData: datasets.data[0].is_demo_data,

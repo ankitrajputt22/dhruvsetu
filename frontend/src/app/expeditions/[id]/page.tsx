@@ -192,10 +192,11 @@ export default async function ExpeditionDetailPage({
                 items={expedition.datasets.map((item) => ({
                   id: item.id,
                   title: item.title,
-                  meta: item.file_type ?? "Metadata only",
+                  meta: item.file_type ? `${item.file_type.toUpperCase()} file` : "Metadata only",
                   demo: item.is_demo_data,
                   status: item.verification_status,
                   sourceUrl: item.source_url,
+                  href: `/datasets/${item.id}`,
                 }))}
               />
               <KnowledgeList

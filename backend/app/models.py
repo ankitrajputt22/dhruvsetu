@@ -380,6 +380,8 @@ class Dataset(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Base)
     description: Mapped[str | None] = mapped_column(Text)
     file_type: Mapped[str | None] = mapped_column(String(50))
     source_url: Mapped[str | None] = mapped_column(String(2048))
+    # Name of the data file inside the dataset store. Empty for metadata-only records.
+    file_name: Mapped[str | None] = mapped_column(String(255))
 
     expeditions: Mapped[list[Expedition]] = relationship(
         secondary=dataset_expeditions, back_populates="datasets"

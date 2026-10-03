@@ -45,3 +45,19 @@ export function safeExternalUrl(value: string | null): string | null {
     return null;
   }
 }
+
+export function formatFileSize(bytes: number): string {
+  if (bytes < 1024) {
+    return `${bytes} bytes`;
+  }
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const numberFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 4 });
+
+export function formatNumber(value: number): string {
+  return numberFormat.format(value);
+}
