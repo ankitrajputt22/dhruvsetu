@@ -1,20 +1,196 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.database import get_db
-from app.models import Dataset, Expedition, Publication, ResearchTopic, Scientist
+from app.models import (
+    Dataset,
+    Expedition,
+    Publication,
+    Report,
+    ResearchTopic,
+    Scientist,
+)
 from app.schemas import (
     DatasetSummary,
     ExpeditionDetail,
     ExpeditionSummary,
     PublicationSummary,
     ResearchTopicSummary,
+    SearchResourceType,
+    SearchResult,
     ScientistDetail,
     ScientistSummary,
 )
 
 router = APIRouter(prefix="/api")
+SEARCH_LIMIT_PER_TYPE = 5
+
+
+def _escape_like(value: str) -> str:
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def _search_records(
+    db: Session,
+    *,
+    model: type,
+    title_column,
+    description_column,
+    pattern: str,
+):
+    title_match = func.lower(title_column).like(pattern, escape="\\")
+    description_match = func.lower(description_column).like(pattern, escape="\\")
+    match_rank = case((title_match, 0), else_=1).label("match_rank")
+    statement = (
+        select(model, match_rank)
+        .where(or_(title_match, description_match))
+        .order_by(match_rank, title_column)
+        .limit(SEARCH_LIMIT_PER_TYPE)
+    )
+    return db.execute(statement).all()
+
+
+def _to_search_results(
+    rows,
+    *,
+    resource_type: SearchResourceType,
+    title_attribute: str,
+    description_attribute: str,
+    href_template: str | None,
+) -> list[SearchResult]:
+    results = []
+    for record, match_rank in rows:
+        title = getattr(record, title_attribute)
+        is_demo_data = getattr(record, "is_demo_data", None)
+        if is_demo_data is None:
+            is_demo_data = title.startswith(("Demo ", "Prototype "))
+
+        results.append(
+            SearchResult(
+                id=record.id,
+                type=resource_type,
+                title=title,
+                description=getattr(record, description_attribute),
+                is_demo_data=bool(is_demo_data),
+                verification_status=getattr(record, "verification_status", None),
+                href=(
+                    href_template.format(id=record.id)
+                    if href_template is not None
+                    else None
+                ),
+                match_reason=(
+                    "Matched title" if match_rank == 0 else "Matched description"
+                ),
+            )
+        )
+    return results
+
+
+SEARCH_SOURCES = {
+    SearchResourceType.expedition: (
+        Expedition,
+        Expedition.name,
+        Expedition.summary,
+        "name",
+        "summary",
+        "/expeditions/{id}",
+    ),
+    SearchResourceType.scientist: (
+        Scientist,
+        Scientist.name,
+        Scientist.research_area,
+        "name",
+        "research_area",
+        "/scientists",
+    ),
+    SearchResourceType.publication: (
+        Publication,
+        Publication.title,
+        Publication.summary,
+        "title",
+        "summary",
+        "/publications",
+    ),
+    SearchResourceType.dataset: (
+        Dataset,
+        Dataset.title,
+        Dataset.description,
+        "title",
+        "description",
+        "/datasets",
+    ),
+    SearchResourceType.topic: (
+        ResearchTopic,
+        ResearchTopic.name,
+        ResearchTopic.description,
+        "name",
+        "description",
+        None,
+    ),
+    SearchResourceType.report: (
+        Report,
+        Report.title,
+        Report.summary,
+        "title",
+        "summary",
+        None,
+    ),
+}
+
+
+@router.get("/search", response_model=list[SearchResult])
+def search(
+    q: Annotated[str, Query(max_length=100)],
+    resource_type: Annotated[
+        SearchResourceType | None, Query(alias="type")
+    ] = None,
+    db: Session = Depends(get_db),
+) -> list[SearchResult]:
+    query = q.strip()
+    if not query:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Search query cannot be empty",
+        )
+
+    pattern = f"%{_escape_like(query.casefold())}%"
+    requested_types = (
+        (resource_type,)
+        if resource_type is not None
+        else tuple(SearchResourceType)
+    )
+
+    results = []
+    for current_type in requested_types:
+        (
+            model,
+            title_column,
+            description_column,
+            title_attribute,
+            description_attribute,
+            href_template,
+        ) = SEARCH_SOURCES[current_type]
+        rows = _search_records(
+            db,
+            model=model,
+            title_column=title_column,
+            description_column=description_column,
+            pattern=pattern,
+        )
+        results.extend(
+            _to_search_results(
+                rows,
+                resource_type=current_type,
+                title_attribute=title_attribute,
+                description_attribute=description_attribute,
+                href_template=href_template,
+            )
+        )
+
+    return results
 
 
 @router.get("/expeditions", response_model=list[ExpeditionSummary])

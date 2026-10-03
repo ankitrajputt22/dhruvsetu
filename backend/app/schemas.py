@@ -1,10 +1,31 @@
 from datetime import date
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
 
 class ApiSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
+
+class SearchResourceType(StrEnum):
+    expedition = "expedition"
+    scientist = "scientist"
+    publication = "publication"
+    dataset = "dataset"
+    topic = "topic"
+    report = "report"
+
+
+class SearchResult(ApiSchema):
+    id: str
+    type: SearchResourceType
+    title: str
+    description: str | None
+    is_demo_data: bool
+    verification_status: str | None
+    href: str | None
+    match_reason: str
 
 
 class InstitutionSummary(ApiSchema):

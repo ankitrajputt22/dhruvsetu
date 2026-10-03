@@ -78,3 +78,22 @@ export type ExpeditionDetail = Expedition & {
   datasets: Dataset[];
   media_assets: MediaAsset[];
 };
+
+export type SearchResourceType =
+  | "expedition"
+  | "scientist"
+  | "publication"
+  | "dataset"
+  | "topic"
+  | "report";
+
+export type SearchResult = {
+  id: string;
+  type: SearchResourceType;
+  title: string;
+  description: string | null;
+  is_demo_data: boolean;
+  verification_status: string | null;
+  href: string | null;
+  match_reason: string;
+};
