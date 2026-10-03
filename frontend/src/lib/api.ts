@@ -18,3 +18,35 @@ export async function getApi<T>(path: string): Promise<ApiResult<T>> {
     return { data: null, status: null };
   }
 }
+
+export type PostResult<T> =
+  | { data: T; status: number; detail: null }
+  | { data: null; status: number | null; detail: string | null };
+
+export async function postApi<T>(
+  path: string,
+  body: unknown,
+): Promise<PostResult<T>> {
+  try {
+    const response = await fetch(`${API_URL}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = (await response.json().catch(() => null)) as {
+        detail?: unknown;
+      } | null;
+      return {
+        data: null,
+        status: response.status,
+        detail: typeof error?.detail === "string" ? error.detail : null,
+      };
+    }
+
+    return { data: (await response.json()) as T, status: response.status, detail: null };
+  } catch {
+    return { data: null, status: null, detail: null };
+  }
+}

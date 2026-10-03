@@ -106,3 +106,30 @@ python -m app.search.build_index
 
 The prototype does not use OCR, accept public uploads, call an LLM, or generate
 answers. Source retrieval returns original text chunks for later RAG work.
+
+## AI assistant
+
+The assistant answers questions using source chunks from the repository. It
+calls `retrieve_source_chunks()`, sends the best matching chunks to Claude, and
+returns the answer with its sources.
+
+Add these values to the `.env` file in the project root. Never commit the real
+key.
+
+```bash
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=
+```
+
+`ANTHROPIC_MODEL` is optional. When it is empty the assistant uses
+`claude-opus-5-5`. Without an API key the endpoint returns
+`AI assistant is not configured.` and the rest of DhruvSetu keeps working.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/assistant/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What does the sea ice observation plan record?"}'
+```
+
+Weak matches are not sent to Claude. Tune the cut-off with
+`ASSISTANT_MIN_SCORE` (default `0.35`). The frontend page is at `/assistant`.

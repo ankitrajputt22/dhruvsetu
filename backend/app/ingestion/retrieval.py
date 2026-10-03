@@ -18,6 +18,11 @@ class RetrievedSourceChunk:
     chunk_id: str
     text: str
     page_number: int | None
+    file_type: str | None = None
+    source_type: str | None = None
+    source_url: str | None = None
+    verification_status: str | None = None
+    is_demo_data: bool = False
 
 
 def retrieve_source_chunks(
@@ -59,6 +64,11 @@ def retrieve_source_chunks(
                 chunk_id=chunk.id,
                 text=chunk.text,
                 page_number=chunk.page_number,
+                file_type=chunk.document.file_type,
+                source_type=chunk.document.source_type,
+                source_url=chunk.document.source_url,
+                verification_status=chunk.document.verification_status,
+                is_demo_data=chunk.document.is_demo_data,
             )
         )
     return retrieved
