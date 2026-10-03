@@ -259,3 +259,51 @@ export type AssistantAnswer = {
   answer: string;
   sources: AssistantSource[];
 };
+
+export type DataLabStatus = {
+  enabled: boolean;
+  supported_file_types: string[];
+  cell_timeout_seconds: number;
+  idle_timeout_minutes: number;
+};
+
+export type DataLabStarterCell = {
+  title: string;
+  code: string;
+};
+
+export type DataLabSession = {
+  session_id: string;
+  dataset_id: string;
+  dataset_title: string;
+  file_type: string;
+  // Where the dataset appears inside the session, never a host path.
+  data_path: string;
+  starter_cells: DataLabStarterCell[];
+  cell_timeout_seconds: number;
+  idle_timeout_minutes: number;
+  created_at: string;
+};
+
+export type DataLabOutput =
+  | { type: "text"; stream: "stdout" | "stderr" | "result"; text: string }
+  | {
+      type: "table";
+      columns: string[];
+      index: string[];
+      index_name: string | null;
+      rows: DatasetCell[][];
+      total_rows: number;
+      total_columns: number;
+    }
+  | { type: "image"; media_type: "image/png"; data: string }
+  | { type: "error"; name: string; message: string; traceback: string };
+
+export type DataLabResult = {
+  status: "ok" | "error" | "timeout" | "kernel_died";
+  outputs: DataLabOutput[];
+  truncated: boolean;
+  execution_count: number | null;
+  state_lost: boolean;
+  duration_ms: number;
+};

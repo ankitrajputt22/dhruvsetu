@@ -12,7 +12,7 @@ import { VerificationBadge } from "@/components/verification-badge";
 import { VerificationSummary } from "@/components/verification-summary";
 import { apiUrl, getApi } from "@/lib/api";
 import { formatDate, formatFileSize, safeExternalUrl } from "@/lib/format";
-import type { DatasetDetail } from "@/lib/types";
+import type { DataLabStatus, DatasetDetail } from "@/lib/types";
 
 const NOT_AVAILABLE = "Not available";
 
@@ -39,6 +39,12 @@ export default async function DatasetDetailPage({
 
   const dataset = result.data;
   const file = dataset.file;
+  const dataLab = (await getApi<DataLabStatus>("/api/data-lab/status")).data;
+  const opensInDataLab =
+    dataLab?.enabled === true &&
+    file?.available === true &&
+    file.file_type !== null &&
+    dataLab.supported_file_types.includes(file.file_type);
   const sourceUrl = safeExternalUrl(dataset.source_url);
   const fileType = file?.file_type ?? dataset.file_type;
 
@@ -184,12 +190,27 @@ export default async function DatasetDetailPage({
               )}
             </section>
 
-            <section className="rounded-xl border border-dashed border-slate-300 bg-white p-5">
+            <section className="rounded-xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-950">Polar Data Lab</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Data Lab support is coming in a later phase. Datasets cannot be
-                opened there yet.
-              </p>
+              {opensInDataLab ? (
+                <>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Analyse this dataset with Python in a temporary session.
+                  </p>
+                  <Link
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-sky-800 bg-sky-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-900"
+                    href={`/data-lab?dataset=${dataset.id}`}
+                  >
+                    Open in Polar Data Lab <span aria-hidden="true">→</span>
+                  </Link>
+                </>
+              ) : (
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  {dataLab?.enabled === true
+                    ? "This dataset cannot currently be opened in Polar Data Lab. A CSV or JSON data file is needed."
+                    : "Polar Data Lab is not enabled on this server."}
+                </p>
+              )}
             </section>
 
             <AboutSources />

@@ -1,3 +1,5 @@
+from contextlib import asynccontextmanager
+
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -5,12 +7,23 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api import router as api_router
+from app.data_lab.routes import router as data_lab_router
+from app.data_lab.sessions import end_all_sessions
 from app.database import get_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    # Analysis containers never outlive the API process.
+    end_all_sessions()
+
 
 app = FastAPI(
     title="DhruvSetu API",
     description="Backend API for the DhruvSetu platform.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -25,6 +38,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(data_lab_router)
 
 
 @app.get("/")

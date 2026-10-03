@@ -111,6 +111,102 @@ python -m app.search.build_index
 The prototype does not use OCR, accept public uploads, call an LLM, or generate
 answers. Source retrieval returns original text chunks for later RAG work.
 
+## Polar Data Lab
+
+The Data Lab runs Python on one dataset in a temporary session. Each session
+is a short-lived Docker container with a real Jupyter (IPython) kernel inside.
+User code never runs inside the FastAPI process or directly on the host.
+
+### Requirements and setup
+
+Docker must be running. Build the analysis image once from the project root:
+
+```bash
+docker compose build data-lab
+```
+
+This builds `dhruvsetu-data-lab:1` (Python 3.12 with pandas, numpy, matplotlib
+and ipykernel). `docker compose up` does not start it and the MySQL service is
+not affected. Then enable the feature in the root `.env` and restart the API:
+
+```bash
+DATA_LAB_ENABLED=true
+```
+
+Without `DATA_LAB_ENABLED=true` every Data Lab endpoint except the status
+check returns `403`, and the frontend shows that the Data Lab is not available.
+
+### How a session works
+
+- `GET /api/data-lab/status` says whether the Data Lab is enabled.
+- `POST /api/data-lab/sessions` with `{"dataset_id": "..."}` starts a session.
+  The dataset must have an attached CSV or JSON file of at most 50 MB.
+- `POST /api/data-lab/sessions/{id}/execute` with `{"code": "..."}` runs one
+  cell. Variables stay available to later cells in the same session.
+- `DELETE /api/data-lab/sessions/{id}` ends the session and removes its
+  container. Reset in the page is an end followed by a new session.
+
+The backend creates the session id. The dataset file is mounted read-only at
+`/data/dataset.csv` (or `.json`); the host path is never sent to the browser.
+Output comes back as text, tables, PNG images or errors. HTML output is never
+passed on. Output is limited to 20,000 characters of text, 50 table rows, 30
+table columns, 4 images of 1 MB each and 30 outputs per cell, and the reply
+says when something was left out.
+
+### Limits and cleanup
+
+| Limit | Value | Setting |
+|---|---|---|
+| Time per cell | 30 seconds | `DATA_LAB_CELL_TIMEOUT_SECONDS` |
+| Idle time before a session ends | 30 minutes | `DATA_LAB_IDLE_TIMEOUT_MINUTES` |
+| Sessions at the same time | 3 | `DATA_LAB_MAX_SESSIONS` |
+| Memory per session | 512 MB, no swap | `app/data_lab/config.py` |
+| CPU per session | 1 CPU | `app/data_lab/config.py` |
+| Processes per session | 128 | `app/data_lab/config.py` |
+| Workspace size | 128 MB, in memory | `app/data_lab/config.py` |
+
+A cell that runs too long is interrupted and the session keeps its variables.
+If the kernel cannot be interrupted or runs out of memory, it is restarted and
+the variables are cleared. Sessions end when the user resets or leaves the
+page, when they are idle too long, and when the API process stops or reloads
+(including `uvicorn --reload`). To see or remove any that are left:
+
+```bash
+docker ps --filter label=dhruvsetu.data-lab=session
+docker rm -f $(docker ps -q --filter label=dhruvsetu.data-lab=session)
+```
+
+### Isolation
+
+Each session container runs with no network, a read-only root filesystem, a
+non-root user, all Linux capabilities dropped and no privilege escalation. The
+only host path it can see is the one dataset file, read-only. The repository,
+`.env`, MySQL files and the Docker socket are never mounted, and no environment
+variables from the host are passed in.
+
+### Security limits of this prototype
+
+- There is no login. Anyone who can reach the API while `DATA_LAB_ENABLED` is
+  true can run Python in a container. Keep it on a local machine only.
+- Isolation relies on Docker. A container is not as strong a boundary as a
+  virtual machine or a sandbox such as gVisor, so a container-escape bug in
+  Docker or the kernel would reach the host.
+- The API process starts containers with the Docker command line, so it has
+  the same Docker access as the user who runs it.
+- Sessions live in the memory of one API process. Several API workers, or
+  several servers, are not supported.
+- Session ids are random and unguessable, but they are the only thing that
+  protects a session. They are not tied to a user.
+
+Before any public deployment, add authentication, per-user limits and stronger
+isolation.
+
+### Tests
+
+`pytest` covers the API with a fake runtime, and also starts real containers
+when Docker is running and the image is built. Those tests are skipped
+otherwise.
+
 ## Polar Map
 
 `GET /api/map` returns every repository location for the map page: name,

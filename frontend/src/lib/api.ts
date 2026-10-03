@@ -48,3 +48,13 @@ export async function postApi<T>(
     return { data: null, status: null, detail: null };
   }
 }
+
+// "keepalive" lets the request finish while the page is being closed.
+export async function deleteApi(path: string, keepalive = false): Promise<number | null> {
+  try {
+    const response = await fetch(apiUrl(path), { method: "DELETE", keepalive });
+    return response.status;
+  } catch {
+    return null;
+  }
+}

@@ -9,6 +9,7 @@ const links = [
   { href: "/datasets", label: "Datasets" },
   { href: "/documents", label: "Documents" },
   { href: "/map", label: "Polar Map" },
+  { href: "/data-lab", label: "Data Lab" },
   { href: "/assistant", label: "Ask DhruvSetu" },
 ];
 
