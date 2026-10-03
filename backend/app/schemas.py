@@ -1,7 +1,9 @@
 from datetime import date, datetime
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.geo import valid_coordinates
 
 
 class ApiSchema(BaseModel):
@@ -61,6 +63,15 @@ class LocationSummary(ApiSchema):
     id: str
     name: str
     region: str | None
+    latitude: float | None
+    longitude: float | None
+
+    @model_validator(mode="after")
+    def _drop_unusable_coordinates(self) -> "LocationSummary":
+        if valid_coordinates(self.latitude, self.longitude) is None:
+            self.latitude = None
+            self.longitude = None
+        return self
 
 
 class ExpeditionSummary(ApiSchema):
@@ -149,6 +160,48 @@ class DatasetPreview(ApiSchema):
     column_count: int
     preview_limit: int
     statistics_row_count: int
+
+
+class MapStation(ApiSchema):
+    id: str
+    name: str
+    description: str | None
+    verification_status: str
+    is_demo_data: bool
+
+
+class MapExpedition(ApiSchema):
+    id: str
+    name: str
+    expedition_number: str | None
+    verification_status: str
+    is_demo_data: bool
+
+
+class MapRecord(ApiSchema):
+    id: str
+    title: str
+
+
+class MapLocation(ApiSchema):
+    id: str
+    name: str
+    region: str | None
+    description: str | None
+    latitude: float | None
+    longitude: float | None
+    # True when the stored coordinates can be drawn on the web map.
+    mappable: bool
+    location_type: str
+    polar_region: str | None
+    is_demo_data: bool
+    stations: list[MapStation]
+    expeditions: list[MapExpedition]
+    expedition_count: int
+    # Connected through the related expeditions, not directly to the location.
+    research_topics: list[FilterOption]
+    datasets: list[MapRecord]
+    documents: list[MapRecord]
 
 
 class MediaAssetSummary(ApiSchema):

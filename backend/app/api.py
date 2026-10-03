@@ -22,12 +22,14 @@ from app.datasets.preview import (
     build_preview,
     preview_unavailable_reason,
 )
+from app.geo import fits_web_map, polar_region, valid_coordinates
 from app.models import (
     VERIFICATION_STATUSES,
     Dataset,
     Document,
     DocumentChunk,
     Expedition,
+    Location,
     Publication,
     Report,
     ResearchTopic,
@@ -54,6 +56,10 @@ from app.schemas import (
     ExpeditionSummary,
     FilterOption,
     LinkedDocument,
+    MapExpedition,
+    MapLocation,
+    MapRecord,
+    MapStation,
     PublicationSummary,
     RelatedDocumentResource,
     ResearchTopicSummary,
@@ -104,6 +110,11 @@ def _match_reason(number: int) -> str:
     return "Also related to your question"
 
 
+def _is_demo_name(name: str) -> bool:
+    # Records without a demo flag are marked as demo data by their name.
+    return name.startswith(("Demo ", "Prototype "))
+
+
 def _escape_like(value: str) -> str:
     return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
@@ -141,7 +152,7 @@ def _to_search_results(
         title = getattr(record, title_attribute)
         is_demo_data = getattr(record, "is_demo_data", None)
         if is_demo_data is None:
-            is_demo_data = title.startswith(("Demo ", "Prototype "))
+            is_demo_data = _is_demo_name(title)
 
         results.append(
             SearchResult(
@@ -242,7 +253,7 @@ def _semantic_results(
         title = getattr(record, title_attribute)
         is_demo_data = getattr(record, "is_demo_data", None)
         if is_demo_data is None:
-            is_demo_data = title.startswith(("Demo ", "Prototype "))
+            is_demo_data = _is_demo_name(title)
 
         results.append(
             SearchResult(
@@ -447,6 +458,19 @@ def get_document(
     )
 
 
+def _expedition_document_links(expeditions: list[Expedition]):
+    """Match documents linked to these expeditions, or to their publications or reports."""
+    expedition_ids = [item.id for item in expeditions]
+    publication_ids = [pub.id for item in expeditions for pub in item.publications]
+    report_ids = [report.id for item in expeditions for report in item.reports]
+    links = [Document.expedition_id.in_(expedition_ids)]
+    if publication_ids:
+        links.append(Document.publication_id.in_(publication_ids))
+    if report_ids:
+        links.append(Document.report_id.in_(report_ids))
+    return or_(*links)
+
+
 @router.get("/expeditions/{expedition_id}", response_model=ExpeditionDetail)
 def get_expedition(
     expedition_id: str, db: Session = Depends(get_db)
@@ -470,18 +494,9 @@ def get_expedition(
             detail="Expedition not found",
         )
 
-    # Documents linked to the expedition itself or to one of its publications
-    # or reports.
-    links = [Document.expedition_id == expedition.id]
-    publication_ids = [item.id for item in expedition.publications]
-    report_ids = [item.id for item in expedition.reports]
-    if publication_ids:
-        links.append(Document.publication_id.in_(publication_ids))
-    if report_ids:
-        links.append(Document.report_id.in_(report_ids))
     documents = db.scalars(
         select(Document)
-        .where(or_(*links))
+        .where(_expedition_document_links([expedition]))
         .options(*DOCUMENT_RELATIONSHIPS)
         .order_by(Document.title)
     ).all()
@@ -489,6 +504,100 @@ def get_expedition(
     detail = ExpeditionDetail.model_validate(expedition)
     detail.source_documents = [_linked_document(item) for item in documents]
     return detail
+
+
+def _map_location(location: Location, documents: list[Document]) -> MapLocation:
+    coordinates = valid_coordinates(location.latitude, location.longitude)
+    latitude, longitude = coordinates if coordinates else (None, None)
+    expeditions = sorted(location.expeditions, key=lambda item: item.name)
+
+    if location.research_stations:
+        location_type = "station"
+    elif expeditions:
+        location_type = "expedition_location"
+    else:
+        location_type = "other"
+
+    topics = {
+        topic.id: topic for item in expeditions for topic in item.research_topics
+    }
+    datasets = {
+        dataset.id: dataset for item in expeditions for dataset in item.datasets
+    }
+    expedition_ids = {item.id for item in expeditions}
+    publication_ids = {pub.id for item in expeditions for pub in item.publications}
+    report_ids = {report.id for item in expeditions for report in item.reports}
+
+    return MapLocation(
+        id=location.id,
+        name=location.name,
+        region=location.region,
+        description=location.description,
+        latitude=latitude,
+        longitude=longitude,
+        mappable=fits_web_map(latitude),
+        location_type=location_type,
+        polar_region=polar_region(latitude),
+        is_demo_data=_is_demo_name(location.name),
+        stations=[
+            MapStation(
+                id=station.id,
+                name=station.name,
+                description=station.description,
+                verification_status=station.verification_status,
+                is_demo_data=_is_demo_name(station.name),
+            )
+            for station in sorted(location.research_stations, key=lambda item: item.name)
+        ],
+        expeditions=[MapExpedition.model_validate(item) for item in expeditions],
+        expedition_count=len(expeditions),
+        research_topics=[
+            FilterOption(id=topic.id, name=topic.name)
+            for topic in sorted(topics.values(), key=lambda item: item.name)
+        ],
+        datasets=[
+            MapRecord(id=dataset.id, title=dataset.title)
+            for dataset in sorted(datasets.values(), key=lambda item: item.title)
+        ],
+        documents=[
+            MapRecord(id=document.id, title=document.title)
+            for document in documents
+            if document.expedition_id in expedition_ids
+            or document.publication_id in publication_ids
+            or document.report_id in report_ids
+        ],
+    )
+
+
+@router.get("/map", response_model=list[MapLocation])
+def list_map_locations(db: Session = Depends(get_db)) -> list[MapLocation]:
+    locations = db.scalars(
+        select(Location)
+        .options(
+            selectinload(Location.research_stations),
+            selectinload(Location.expeditions).options(
+                selectinload(Expedition.research_topics),
+                selectinload(Expedition.datasets),
+                selectinload(Expedition.publications),
+                selectinload(Expedition.reports),
+            ),
+        )
+        .order_by(Location.name)
+    ).all()
+
+    expeditions = list(
+        {item.id: item for location in locations for item in location.expeditions}.values()
+    )
+    documents = (
+        db.scalars(
+            select(Document)
+            .where(_expedition_document_links(expeditions))
+            .order_by(Document.title)
+        ).all()
+        if expeditions
+        else []
+    )
+    return [_map_location(location, documents) for location in locations]
 
 
 @router.get("/scientists", response_model=list[ScientistSummary])
