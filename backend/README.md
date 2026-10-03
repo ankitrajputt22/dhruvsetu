@@ -45,3 +45,15 @@ alembic upgrade head
 
 Check the live database connection at
 [http://127.0.0.1:8000/health/database](http://127.0.0.1:8000/health/database).
+
+## Demo data
+
+Add the small prototype dataset after migrations are current:
+
+```bash
+python -m app.seed
+```
+
+The seed is safe to run again. It keeps the same demo records and does not
+delete other data. All seeded content is clearly marked as demo or prototype
+data and must not be treated as real scientific information.
