@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -260,6 +261,71 @@ class DatasetListItem(DatasetSummary):
 
 class DatasetDetail(DatasetListItem):
     file: DatasetFileInfo | None
+
+
+class DataLabStatus(ApiSchema):
+    enabled: bool
+    supported_file_types: list[str]
+    cell_timeout_seconds: int
+    idle_timeout_minutes: int
+
+
+class DataLabSessionRequest(BaseModel):
+    dataset_id: str = Field(max_length=36)
+
+
+class DataLabStarterCell(ApiSchema):
+    title: str
+    code: str
+
+
+class DataLabSession(ApiSchema):
+    session_id: str
+    dataset_id: str
+    dataset_title: str
+    file_type: str
+    # Where the dataset appears inside the session, never a host path.
+    data_path: str
+    starter_cells: list[DataLabStarterCell]
+    cell_timeout_seconds: int
+    idle_timeout_minutes: int
+    created_at: datetime
+
+
+class DataLabExecuteRequest(BaseModel):
+    code: str = Field(max_length=20_000)
+
+
+class DataLabOutput(ApiSchema):
+    """One piece of cell output: text, a table, an image or an error."""
+
+    type: Literal["text", "table", "image", "error"]
+    # text
+    stream: str | None = None
+    text: str | None = None
+    # table
+    columns: list[str] | None = None
+    index: list[str] | None = None
+    index_name: str | None = None
+    rows: list[list[int | float | str | None]] | None = None
+    total_rows: int | None = None
+    total_columns: int | None = None
+    # image
+    media_type: str | None = None
+    data: str | None = None
+    # error
+    name: str | None = None
+    message: str | None = None
+    traceback: str | None = None
+
+
+class DataLabResult(ApiSchema):
+    status: Literal["ok", "error", "timeout", "kernel_died"]
+    outputs: list[DataLabOutput]
+    truncated: bool
+    execution_count: int | None
+    state_lost: bool
+    duration_ms: int
 
 
 class AssistantQuestion(BaseModel):

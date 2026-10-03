@@ -21,5 +21,16 @@ services:
       retries: 10
       start_period: 30s
 
+  # Image for Polar Data Lab analysis sessions. It is only built from here:
+  #   docker compose build data-lab
+  # "docker compose up" does not start it. The backend starts one short-lived
+  # container per session with no network access.
+  data-lab:
+    image: dhruvsetu-data-lab:1
+    build:
+      context: ./docker/data-lab
+    profiles: ["data-lab"]
+    network_mode: none
+
 volumes:
   mysql_data:
