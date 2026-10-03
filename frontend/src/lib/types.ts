@@ -100,3 +100,26 @@ export type SearchResult = {
   match_reason: string;
   search_mode: SearchMode;
 };
+
+export type RelatedDocumentResource = {
+  id: string;
+  type: string;
+  title: string;
+};
+
+export type Document = {
+  id: string;
+  title: string;
+  file_name: string;
+  file_type: string;
+  source_type: string;
+  publication_date: string | null;
+  verification_status: string;
+  is_demo_data: boolean;
+  chunk_count: number;
+};
+
+export type DocumentDetail = Document & {
+  source_url: string | null;
+  related_resources: RelatedDocumentResource[];
+};

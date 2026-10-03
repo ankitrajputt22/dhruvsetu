@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session, selectinload
 from app.database import get_db
 from app.models import (
     Dataset,
+    Document,
+    DocumentChunk,
     Expedition,
     Publication,
     Report,
@@ -19,9 +21,12 @@ from app.search.semantic import (
 )
 from app.schemas import (
     DatasetSummary,
+    DocumentDetail,
+    DocumentSummary,
     ExpeditionDetail,
     ExpeditionSummary,
     PublicationSummary,
+    RelatedDocumentResource,
     ResearchTopicSummary,
     SearchMode,
     SearchResourceType,
@@ -32,6 +37,40 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api")
 SEARCH_LIMIT_PER_TYPE = 5
+
+
+def _document_summary(document: Document, chunk_count: int) -> DocumentSummary:
+    return DocumentSummary(
+        id=document.id,
+        title=document.title,
+        file_name=document.file_name,
+        file_type=document.file_type,
+        source_type=document.source_type,
+        publication_date=document.publication_date,
+        verification_status=document.verification_status,
+        is_demo_data=document.is_demo_data,
+        chunk_count=chunk_count,
+    )
+
+
+def _related_document_resources(
+    document: Document,
+) -> list[RelatedDocumentResource]:
+    resources = []
+    for resource_type, record, title_attribute in (
+        ("publication", document.publication, "title"),
+        ("report", document.report, "title"),
+        ("expedition", document.expedition, "name"),
+    ):
+        if record is not None:
+            resources.append(
+                RelatedDocumentResource(
+                    id=record.id,
+                    type=resource_type,
+                    title=getattr(record, title_attribute),
+                )
+            )
+    return resources
 
 
 def _escape_like(value: str) -> str:
@@ -266,6 +305,53 @@ def search(
 def list_expeditions(db: Session = Depends(get_db)) -> list[ExpeditionSummary]:
     expeditions = db.scalars(select(Expedition).order_by(Expedition.name)).all()
     return [ExpeditionSummary.model_validate(item) for item in expeditions]
+
+
+@router.get("/documents", response_model=list[DocumentSummary])
+def list_documents(db: Session = Depends(get_db)) -> list[DocumentSummary]:
+    chunk_count = (
+        select(func.count(DocumentChunk.id))
+        .where(DocumentChunk.document_id == Document.id)
+        .correlate(Document)
+        .scalar_subquery()
+    )
+    rows = db.execute(
+        select(Document, chunk_count.label("chunk_count")).order_by(Document.title)
+    ).all()
+    return [_document_summary(document, count) for document, count in rows]
+
+
+@router.get("/documents/{document_id}", response_model=DocumentDetail)
+def get_document(
+    document_id: str,
+    db: Session = Depends(get_db),
+) -> DocumentDetail:
+    document = db.scalar(
+        select(Document)
+        .where(Document.id == document_id)
+        .options(
+            selectinload(Document.publication),
+            selectinload(Document.report),
+            selectinload(Document.expedition),
+        )
+    )
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+
+    chunk_count = db.scalar(
+        select(func.count(DocumentChunk.id)).where(
+            DocumentChunk.document_id == document.id
+        )
+    ) or 0
+    summary = _document_summary(document, chunk_count)
+    return DocumentDetail(
+        **summary.model_dump(),
+        source_url=document.source_url,
+        related_resources=_related_document_resources(document),
+    )
 
 
 @router.get("/expeditions/{expedition_id}", response_model=ExpeditionDetail)

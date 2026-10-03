@@ -9,9 +9,17 @@ from uuid import uuid4
 
 import numpy as np
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from app.models import Dataset, Expedition, Publication, Report, ResearchTopic, Scientist
+from app.models import (
+    Dataset,
+    DocumentChunk,
+    Expedition,
+    Publication,
+    Report,
+    ResearchTopic,
+    Scientist,
+)
 from app.schemas import SearchResourceType
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
@@ -20,8 +28,9 @@ MODEL_CACHE_DIR = BACKEND_ROOT / ".cache" / "huggingface"
 INDEX_DIR = BACKEND_ROOT / "data" / "semantic_search"
 VECTOR_FILE_NAME = "vectors.npz"
 METADATA_FILE_NAME = "metadata.json"
-INDEX_VERSION = 1
+INDEX_VERSION = 2
 SEMANTIC_RESULT_LIMIT = 10
+DOCUMENT_CHUNK_TYPE = "document_chunk"
 
 os.environ.setdefault("HF_HOME", str(MODEL_CACHE_DIR))
 
@@ -32,16 +41,20 @@ class SemanticSearchUnavailable(RuntimeError):
 
 @dataclass(frozen=True)
 class SearchDocument:
-    resource_type: SearchResourceType
+    resource_type: SearchResourceType | str
     record_id: str
     text: str
+    document_id: str | None = None
+    page_number: int | None = None
 
 
 @dataclass(frozen=True)
 class SemanticMatch:
-    resource_type: SearchResourceType
+    resource_type: SearchResourceType | str
     record_id: str
     score: float
+    document_id: str | None = None
+    page_number: int | None = None
 
 
 SEARCHABLE_SOURCES = (
@@ -104,7 +117,29 @@ def collect_search_documents(db: Session) -> list[SearchDocument]:
                     text=f"{resource_type.value}: {title}. {description}".strip(),
                 )
             )
+
+    chunks = db.scalars(
+        select(DocumentChunk)
+        .options(selectinload(DocumentChunk.document))
+        .order_by(DocumentChunk.document_id, DocumentChunk.chunk_number)
+    ).all()
+    for chunk in chunks:
+        documents.append(
+            SearchDocument(
+                resource_type=DOCUMENT_CHUNK_TYPE,
+                record_id=chunk.id,
+                document_id=chunk.document_id,
+                page_number=chunk.page_number,
+                text=f"document: {chunk.document.title}. {chunk.text}",
+            )
+        )
     return documents
+
+
+def _resource_type_value(resource_type: SearchResourceType | str) -> str:
+    if isinstance(resource_type, SearchResourceType):
+        return resource_type.value
+    return resource_type
 
 
 def build_semantic_index(
@@ -122,8 +157,10 @@ def build_semantic_index(
         "model": MODEL_NAME,
         "records": [
             {
-                "type": document.resource_type.value,
+                "type": _resource_type_value(document.resource_type),
                 "id": document.record_id,
+                "document_id": document.document_id,
+                "page_number": document.page_number,
             }
             for document in documents
         ],
@@ -167,17 +204,33 @@ def _load_semantic_index(
         if metadata.get("model") != MODEL_NAME:
             raise ValueError("Index model does not match")
 
-        documents = [
-            SearchDocument(
-                resource_type=SearchResourceType(item["type"]),
-                record_id=item["id"],
-                text="",
+        documents = []
+        for item in metadata["records"]:
+            raw_type = item["type"]
+            resource_type = (
+                DOCUMENT_CHUNK_TYPE
+                if raw_type == DOCUMENT_CHUNK_TYPE
+                else SearchResourceType(raw_type)
             )
-            for item in metadata["records"]
-        ]
+            documents.append(
+                SearchDocument(
+                    resource_type=resource_type,
+                    record_id=item["id"],
+                    text="",
+                    document_id=item.get("document_id"),
+                    page_number=item.get("page_number"),
+                )
+            )
         if vectors.ndim != 2 or len(vectors) != len(documents):
             raise ValueError("Index files do not match")
-    except (KeyError, TypeError, ValueError, json.JSONDecodeError, OSError) as error:
+    except (
+        AttributeError,
+        KeyError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+        OSError,
+    ) as error:
         raise SemanticSearchUnavailable(
             "The semantic search index could not be loaded"
         ) from error
@@ -188,18 +241,24 @@ def _load_semantic_index(
 def search_semantic_index(
     query: str,
     *,
-    resource_type: SearchResourceType | None = None,
+    resource_type: SearchResourceType | str | None = None,
     limit: int = SEMANTIC_RESULT_LIMIT,
     index_dir: Path = INDEX_DIR,
 ) -> list[SemanticMatch]:
     vectors, documents = _load_semantic_index(index_dir=index_dir)
     query_vector = _encode([query])[0]
 
-    candidate_indexes = [
-        index
-        for index, document in enumerate(documents)
-        if resource_type is None or document.resource_type == resource_type
-    ]
+    requested_type = (
+        _resource_type_value(resource_type) if resource_type is not None else None
+    )
+    candidate_indexes = []
+    for index, document in enumerate(documents):
+        document_type = _resource_type_value(document.resource_type)
+        if requested_type is None and document_type == DOCUMENT_CHUNK_TYPE:
+            continue
+        if requested_type is not None and document_type != requested_type:
+            continue
+        candidate_indexes.append(index)
     if not candidate_indexes:
         return []
 
@@ -210,6 +269,8 @@ def search_semantic_index(
             resource_type=documents[candidate_indexes[position]].resource_type,
             record_id=documents[candidate_indexes[position]].record_id,
             score=float(scores[position]),
+            document_id=documents[candidate_indexes[position]].document_id,
+            page_number=documents[candidate_indexes[position]].page_number,
         )
         for position in ranked_positions
     ]

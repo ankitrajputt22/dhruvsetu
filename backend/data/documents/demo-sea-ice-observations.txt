@@ -1,0 +1,9 @@
+Demo Data - Sea Ice Observation Notes
+
+This small prototype document is provided only for software testing. It is not a government publication, a scientific citation, or a record from a real voyage.
+
+The fictional observation plan records sea ice concentration, visible ice type, surface condition, and the boundary between ice and open water. Each note keeps a time and a general observation area so that a later reader can understand the context. The plan also mentions air temperature and wind because weather can change the appearance and movement of sea ice.
+
+The document recommends comparing field notes with repeated observations rather than treating a single view as a complete pattern. Clear source labels are kept with every text section so that retrieved information can always be traced back to this demo document.
+
+All content in this file is invented prototype data and must not be presented as verified polar science.

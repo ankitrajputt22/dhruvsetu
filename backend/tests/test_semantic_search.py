@@ -8,6 +8,7 @@ from app.main import app
 from app.schemas import SearchResourceType
 from app.search import semantic
 from app.search.semantic import (
+    DOCUMENT_CHUNK_TYPE,
     SearchDocument,
     SemanticMatch,
     SemanticSearchUnavailable,
@@ -165,3 +166,41 @@ def test_index_rebuild_and_vector_filter(tmp_path, monkeypatch) -> None:
     assert first_count == 2
     assert second_count == 2
     assert [match.record_id for match in matches] == ["dataset-id"]
+
+
+def test_document_chunks_are_indexed_but_hidden_from_normal_search(
+    tmp_path, monkeypatch
+) -> None:
+    documents = [
+        SearchDocument(
+            resource_type=SearchResourceType.expedition,
+            record_id="expedition-id",
+            text="expedition: Antarctic climate research",
+        ),
+        SearchDocument(
+            resource_type=DOCUMENT_CHUNK_TYPE,
+            record_id="chunk-id",
+            document_id="document-id",
+            page_number=4,
+            text="document: Antarctic climate source details",
+        ),
+    ]
+    monkeypatch.setattr(semantic, "collect_search_documents", lambda db: documents)
+    monkeypatch.setattr(
+        semantic,
+        "_encode",
+        lambda texts: np.asarray([[1.0, 0.0] for _ in texts], dtype=np.float32),
+    )
+
+    assert semantic.build_semantic_index(None, index_dir=tmp_path) == 2
+    normal_matches = semantic.search_semantic_index("climate", index_dir=tmp_path)
+    chunk_matches = semantic.search_semantic_index(
+        "climate",
+        resource_type=DOCUMENT_CHUNK_TYPE,
+        index_dir=tmp_path,
+    )
+
+    assert [match.record_id for match in normal_matches] == ["expedition-id"]
+    assert [match.record_id for match in chunk_matches] == ["chunk-id"]
+    assert chunk_matches[0].document_id == "document-id"
+    assert chunk_matches[0].page_number == 4

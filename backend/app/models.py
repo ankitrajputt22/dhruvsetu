@@ -16,6 +16,7 @@ from sqlalchemy import (
     String,
     Table,
     Text,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -283,6 +284,7 @@ class Expedition(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Ba
     media_assets: Mapped[list[MediaAsset]] = relationship(
         secondary=media_asset_expeditions, back_populates="expeditions"
     )
+    documents: Mapped[list[Document]] = relationship(back_populates="expedition")
 
 
 class Location(UUIDMixin, TimestampMixin, Base):
@@ -349,6 +351,7 @@ class Publication(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, B
     research_topics: Mapped[list[ResearchTopic]] = relationship(
         secondary=publication_research_topics, back_populates="publications"
     )
+    documents: Mapped[list[Document]] = relationship(back_populates="publication")
 
 
 class Report(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Base):
@@ -362,6 +365,7 @@ class Report(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Base):
     expeditions: Mapped[list[Expedition]] = relationship(
         secondary=report_expeditions, back_populates="reports"
     )
+    documents: Mapped[list[Document]] = relationship(back_populates="report")
 
 
 class Dataset(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Base):
@@ -391,3 +395,62 @@ class MediaAsset(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Ba
     expeditions: Mapped[list[Expedition]] = relationship(
         secondary=media_asset_expeditions, back_populates="media_assets"
     )
+
+
+class Document(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Base):
+    __tablename__ = "documents"
+
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    file_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    file_path: Mapped[str] = mapped_column(String(1024), nullable=False)
+    file_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
+    source_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    publication_date: Mapped[date | None] = mapped_column(Date)
+    publication_id: Mapped[str | None] = mapped_column(
+        CHAR(36), ForeignKey("publications.id", ondelete="SET NULL"), index=True
+    )
+    report_id: Mapped[str | None] = mapped_column(
+        CHAR(36), ForeignKey("reports.id", ondelete="SET NULL"), index=True
+    )
+    expedition_id: Mapped[str | None] = mapped_column(
+        CHAR(36), ForeignKey("expeditions.id", ondelete="SET NULL"), index=True
+    )
+
+    publication: Mapped[Publication | None] = relationship(back_populates="documents")
+    report: Mapped[Report | None] = relationship(back_populates="documents")
+    expedition: Mapped[Expedition | None] = relationship(back_populates="documents")
+    chunks: Mapped[list[DocumentChunk]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="DocumentChunk.chunk_number",
+    )
+
+
+class DocumentChunk(UUIDMixin, Base):
+    __tablename__ = "document_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id",
+            "chunk_number",
+            name="uq_document_chunks_document_number",
+        ),
+    )
+
+    document_id: Mapped[str] = mapped_column(
+        CHAR(36),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    chunk_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    page_number: Mapped[int | None] = mapped_column(Integer)
+    section_name: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+    document: Mapped[Document] = relationship(back_populates="chunks")

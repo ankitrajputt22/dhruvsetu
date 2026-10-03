@@ -1,0 +1,9 @@
+Demo Data - Antarctic Climate Field Notes
+
+This prototype source exists only to test DhruvSetu document ingestion and retrieval. It is not an official report and it does not describe measurements from a real expedition.
+
+The demo field team compares air temperature, wind, cloud cover, and snow conditions at a coastal observation point. Repeated observations are recorded at consistent times so that short changes can be separated from longer patterns. Notes also describe whether sea ice is present near the coast because open water and ice can influence local conditions.
+
+The source explains that one observation cannot describe Antarctic climate. A useful climate record needs measurements collected over long periods, careful instrument checks, and clear information about where and when each value was recorded. The prototype expedition connects these observations with atmosphere and climate topics for platform testing.
+
+All names, observations, and activities in this file are fictional prototype content. No real scientific result should be inferred from it.
