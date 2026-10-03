@@ -4,7 +4,8 @@ import { DemoLabel } from "@/components/demo-label";
 import { Icon, type IconName } from "@/components/icons";
 import { DataMessage } from "@/components/page-heading";
 import { SearchForm } from "@/components/search-form";
-import { StatusBadge } from "@/components/status-badge";
+import { OriginalSourceLink } from "@/components/source-link";
+import { VerificationBadge } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
 import type {
   SearchMode,
@@ -212,8 +213,13 @@ export default async function SearchPage({
                             {item.match_reason}
                           </span>
                           {item.verification_status && (
-                            <StatusBadge status={item.verification_status} />
+                            <VerificationBadge status={item.verification_status} />
                           )}
+                          <OriginalSourceLink
+                            className="text-xs"
+                            title={item.title}
+                            url={item.source_url}
+                          />
                         </div>
                       </div>
                     </article>

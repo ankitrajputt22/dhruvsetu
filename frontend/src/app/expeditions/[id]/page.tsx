@@ -5,10 +5,12 @@ import { notFound } from "next/navigation";
 import { DemoLabel } from "@/components/demo-label";
 import { Icon, type IconName } from "@/components/icons";
 import { DataMessage } from "@/components/page-heading";
-import { StatusBadge } from "@/components/status-badge";
+import { RelatedResources } from "@/components/related-resources";
+import { OriginalSourceLink } from "@/components/source-link";
+import { VerificationBadge } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
 import { formatDate, formatDateRange } from "@/lib/format";
-import type { ExpeditionDetail } from "@/lib/types";
+import type { ExpeditionDetail, RelatedDocumentResource } from "@/lib/types";
 
 export default async function ExpeditionDetailPage({
   params,
@@ -158,7 +160,11 @@ export default async function ExpeditionDetailPage({
 
           <section id="research" className="scroll-mt-6">
             <SectionTitle title="Connected research records" />
-            <div className="mt-4 grid gap-6 md:grid-cols-3">
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600">
+              Publications, reports, datasets, and source documents linked to this
+              expedition, each with its verification status.
+            </p>
+            <div className="mt-5 grid gap-6 md:grid-cols-2">
               <KnowledgeList
                 title="Publications"
                 items={expedition.publications.map((item) => ({
@@ -166,6 +172,8 @@ export default async function ExpeditionDetailPage({
                   title: item.title,
                   meta: item.publication_year?.toString() ?? "Year not listed",
                   demo: item.is_demo_data,
+                  status: item.verification_status,
+                  sourceUrl: item.source_url,
                 }))}
               />
               <KnowledgeList
@@ -175,6 +183,8 @@ export default async function ExpeditionDetailPage({
                   title: item.title,
                   meta: formatDate(item.publication_date),
                   demo: item.is_demo_data,
+                  status: item.verification_status,
+                  sourceUrl: item.source_url,
                 }))}
               />
               <KnowledgeList
@@ -184,6 +194,23 @@ export default async function ExpeditionDetailPage({
                   title: item.title,
                   meta: item.file_type ?? "Metadata only",
                   demo: item.is_demo_data,
+                  status: item.verification_status,
+                  sourceUrl: item.source_url,
+                }))}
+              />
+              <KnowledgeList
+                title="Source documents"
+                items={expedition.source_documents.map((item) => ({
+                  id: item.id,
+                  title: item.title,
+                  meta: `${item.file_type.toUpperCase()} document`,
+                  demo: item.is_demo_data,
+                  status: item.verification_status,
+                  sourceUrl: item.source_url,
+                  href: `/documents/${item.id}`,
+                  related: item.related_resources.filter(
+                    (resource) => resource.id !== expedition.id,
+                  ),
                 }))}
               />
             </div>
@@ -212,12 +239,14 @@ export default async function ExpeditionDetailPage({
           <h2 className="font-semibold text-slate-950">Expedition overview</h2>
           <dl className="mt-5 space-y-5">
             <OverviewItem icon="calendar" label="Dates" value={formatDateRange(expedition.start_date, expedition.end_date)} />
-            <OverviewItem icon="status" label="Status" value={expedition.verification_status} />
             <OverviewItem icon="scientist" label="Scientists" value={String(expedition.scientists.length)} />
             <OverviewItem icon="topic" label="Research topics" value={String(expedition.research_topics.length)} />
           </dl>
           <div className="mt-5 border-t border-slate-200 pt-5">
-            <StatusBadge status={expedition.verification_status} />
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Verification</p>
+            <div className="mt-2">
+              <VerificationBadge status={expedition.verification_status} />
+            </div>
           </div>
         </aside>
       </div>
@@ -256,7 +285,16 @@ function KnowledgeList({
   items,
 }: {
   title: string;
-  items: { id: string; title: string; meta: string; demo: boolean }[];
+  items: {
+    id: string;
+    title: string;
+    meta: string;
+    demo: boolean;
+    status: string;
+    sourceUrl: string | null;
+    href?: string;
+    related?: RelatedDocumentResource[];
+  }[];
 }) {
   return (
     <div>
@@ -268,10 +306,27 @@ function KnowledgeList({
           {items.map((item) => (
             <li key={item.id} className="rounded-lg border border-slate-200 bg-white p-3">
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium text-slate-950">{item.title}</p>
+                <p className="min-w-0 break-words text-sm font-medium text-slate-950">
+                  {item.href ? (
+                    <Link className="hover:text-sky-800 hover:underline" href={item.href}>
+                      {item.title}
+                    </Link>
+                  ) : (
+                    item.title
+                  )}
+                </p>
                 {item.demo && <DemoLabel />}
               </div>
               <p className="mt-2 text-xs text-slate-500">{item.meta}</p>
+              {item.related && item.related.length > 0 && (
+                <div className="mt-2">
+                  <RelatedResources resources={item.related} />
+                </div>
+              )}
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <VerificationBadge status={item.status} />
+                <OriginalSourceLink className="text-xs" title={item.title} url={item.sourceUrl} />
+              </div>
             </li>
           ))}
         </ul>

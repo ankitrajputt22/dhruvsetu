@@ -22,6 +22,7 @@ from app.models import (
     ResearchTopic,
     Scientist,
 )
+from app.provenance import related_document_resources
 from app.search.semantic import (
     SemanticSearchUnavailable,
     search_semantic_index,
@@ -35,8 +36,8 @@ from app.schemas import (
     DocumentSummary,
     ExpeditionDetail,
     ExpeditionSummary,
+    LinkedDocument,
     PublicationSummary,
-    RelatedDocumentResource,
     ResearchTopicSummary,
     SearchMode,
     SearchResourceType,
@@ -49,38 +50,40 @@ router = APIRouter(prefix="/api")
 SEARCH_LIMIT_PER_TYPE = 5
 
 
-def _document_summary(document: Document, chunk_count: int) -> DocumentSummary:
-    return DocumentSummary(
+DOCUMENT_RELATIONSHIPS = (
+    selectinload(Document.publication),
+    selectinload(Document.report),
+    selectinload(Document.expedition),
+)
+
+
+def _linked_document(document: Document) -> LinkedDocument:
+    return LinkedDocument(
         id=document.id,
         title=document.title,
-        file_name=document.file_name,
         file_type=document.file_type,
         source_type=document.source_type,
+        source_url=document.source_url,
         publication_date=document.publication_date,
         verification_status=document.verification_status,
         is_demo_data=document.is_demo_data,
+        related_resources=related_document_resources(document),
+    )
+
+
+def _document_summary(document: Document, chunk_count: int) -> DocumentSummary:
+    return DocumentSummary(
+        **_linked_document(document).model_dump(),
+        file_name=document.file_name,
         chunk_count=chunk_count,
     )
 
 
-def _related_document_resources(
-    document: Document,
-) -> list[RelatedDocumentResource]:
-    resources = []
-    for resource_type, record, title_attribute in (
-        ("publication", document.publication, "title"),
-        ("report", document.report, "title"),
-        ("expedition", document.expedition, "name"),
-    ):
-        if record is not None:
-            resources.append(
-                RelatedDocumentResource(
-                    id=record.id,
-                    type=resource_type,
-                    title=getattr(record, title_attribute),
-                )
-            )
-    return resources
+def _match_reason(number: int) -> str:
+    # Plain wording only. The similarity score stays inside the backend.
+    if number == 1:
+        return "Closest match to your question"
+    return "Also related to your question"
 
 
 def _escape_like(value: str) -> str:
@@ -135,6 +138,7 @@ def _to_search_results(
                     if href_template is not None
                     else None
                 ),
+                source_url=getattr(record, "source_url", None),
                 match_reason=(
                     "Matched title" if match_rank == 0 else "Matched description"
                 ),
@@ -235,6 +239,7 @@ def _semantic_results(
                     if href_template is not None
                     else None
                 ),
+                source_url=getattr(record, "source_url", None),
                 match_reason="Related to your search",
                 search_mode=SearchMode.semantic,
             )
@@ -355,10 +360,14 @@ def ask_assistant(
                 title=source.document_title,
                 file_type=source.file_type,
                 source_type=source.source_type,
-                page_number=source.page_number,
                 source_url=source.source_url,
+                publication_date=source.publication_date,
                 verification_status=source.verification_status,
                 is_demo_data=source.is_demo_data,
+                related_resources=list(source.related_resources),
+                page_number=source.page_number,
+                section_name=source.section_name,
+                match_reason=_match_reason(number),
                 href=f"/documents/{source.document_id}",
             )
             for number, source in enumerate(result.sources, start=1)
@@ -381,7 +390,9 @@ def list_documents(db: Session = Depends(get_db)) -> list[DocumentSummary]:
         .scalar_subquery()
     )
     rows = db.execute(
-        select(Document, chunk_count.label("chunk_count")).order_by(Document.title)
+        select(Document, chunk_count.label("chunk_count"))
+        .options(*DOCUMENT_RELATIONSHIPS)
+        .order_by(Document.title)
     ).all()
     return [_document_summary(document, count) for document, count in rows]
 
@@ -394,11 +405,7 @@ def get_document(
     document = db.scalar(
         select(Document)
         .where(Document.id == document_id)
-        .options(
-            selectinload(Document.publication),
-            selectinload(Document.report),
-            selectinload(Document.expedition),
-        )
+        .options(*DOCUMENT_RELATIONSHIPS)
     )
     if document is None:
         raise HTTPException(
@@ -406,16 +413,19 @@ def get_document(
             detail="Document not found",
         )
 
-    chunk_count = db.scalar(
-        select(func.count(DocumentChunk.id)).where(
-            DocumentChunk.document_id == document.id
-        )
-    ) or 0
+    chunk_count, first_page, last_page = db.execute(
+        select(
+            func.count(DocumentChunk.id),
+            func.min(DocumentChunk.page_number),
+            func.max(DocumentChunk.page_number),
+        ).where(DocumentChunk.document_id == document.id)
+    ).one()
     summary = _document_summary(document, chunk_count)
     return DocumentDetail(
         **summary.model_dump(),
-        source_url=document.source_url,
-        related_resources=_related_document_resources(document),
+        created_at=document.created_at,
+        first_page=first_page,
+        last_page=last_page,
     )
 
 
@@ -441,7 +451,26 @@ def get_expedition(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Expedition not found",
         )
-    return ExpeditionDetail.model_validate(expedition)
+
+    # Documents linked to the expedition itself or to one of its publications
+    # or reports.
+    links = [Document.expedition_id == expedition.id]
+    publication_ids = [item.id for item in expedition.publications]
+    report_ids = [item.id for item in expedition.reports]
+    if publication_ids:
+        links.append(Document.publication_id.in_(publication_ids))
+    if report_ids:
+        links.append(Document.report_id.in_(report_ids))
+    documents = db.scalars(
+        select(Document)
+        .where(or_(*links))
+        .options(*DOCUMENT_RELATIONSHIPS)
+        .order_by(Document.title)
+    ).all()
+
+    detail = ExpeditionDetail.model_validate(expedition)
+    detail.source_documents = [_linked_document(item) for item in documents]
+    return detail
 
 
 @router.get("/scientists", response_model=list[ScientistSummary])

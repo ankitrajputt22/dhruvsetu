@@ -5,7 +5,7 @@ import { DemoLabel } from "@/components/demo-label";
 import { Icon } from "@/components/icons";
 import { PageHero } from "@/components/page-hero";
 import { DataMessage } from "@/components/page-heading";
-import { StatusBadge } from "@/components/status-badge";
+import { VerificationBadge } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
 import { formatDateRange } from "@/lib/format";
 import type { Expedition } from "@/lib/types";
@@ -71,7 +71,7 @@ export default async function ExpeditionsPage() {
                         {expedition.summary ?? "No summary is available."}
                       </p>
                       <div className="mt-5 flex flex-wrap gap-2">
-                        <StatusBadge status={expedition.verification_status} />
+                        <VerificationBadge status={expedition.verification_status} />
                         <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
                           <Icon name="calendar" className="h-3.5 w-3.5" />
                           {formatDateRange(expedition.start_date, expedition.end_date)}

@@ -25,6 +25,11 @@ from sqlalchemy.sql import func
 from app.database import Base
 
 
+# uploaded = added but not reviewed, reviewed = checked by a human,
+# verified = source details and content confirmed for the prototype.
+VERIFICATION_STATUSES = ("uploaded", "reviewed", "verified")
+
+
 def new_uuid() -> str:
     return str(uuid4())
 

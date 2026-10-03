@@ -7,6 +7,7 @@ from pathlib import Path
 from app.database import SessionLocal
 from app.ingestion.service import DocumentIngestionError, ingest_document
 from app.ingestion.extractors import DocumentExtractionError
+from app.models import VERIFICATION_STATUSES
 
 
 def _parse_date(value: str) -> date:
@@ -25,7 +26,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--publication-date", type=_parse_date)
     parser.add_argument(
         "--verification-status",
-        choices=("uploaded", "verified"),
+        choices=VERIFICATION_STATUSES,
         default="uploaded",
     )
     parser.add_argument("--demo", action="store_true")

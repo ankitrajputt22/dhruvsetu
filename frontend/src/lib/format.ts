@@ -22,3 +22,26 @@ export function formatDateRange(start: string | null, end: string | null): strin
 export function formatStatus(value: string): string {
   return value.replaceAll("_", " ");
 }
+
+
+export function formatPages(first: number | null, last: number | null): string | null {
+  if (first === null || last === null) {
+    return null;
+  }
+
+  return first === last ? `Page ${first}` : `Pages ${first}–${last}`;
+}
+
+// Only normal web links are ever rendered as an original source link.
+export function safeExternalUrl(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}

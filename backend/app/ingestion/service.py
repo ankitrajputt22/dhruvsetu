@@ -12,7 +12,14 @@ from sqlalchemy.orm import Session
 
 from app.ingestion.chunking import create_chunks
 from app.ingestion.extractors import detect_file_type, extract_document
-from app.models import Document, DocumentChunk, Expedition, Publication, Report
+from app.models import (
+    VERIFICATION_STATUSES,
+    Document,
+    DocumentChunk,
+    Expedition,
+    Publication,
+    Report,
+)
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 DOCUMENT_STORE = BACKEND_ROOT / "data" / "documents"
@@ -150,8 +157,12 @@ def _validate_metadata(
         raise DocumentIngestionError("Source type must be between 1 and 50 characters")
     if source_url is not None and len(source_url) > 2048:
         raise DocumentIngestionError("Source URL is too long")
-    if verification_status not in {"uploaded", "verified"}:
-        raise DocumentIngestionError("Verification status must be uploaded or verified")
+    if source_url is not None and not source_url.startswith(("http://", "https://")):
+        raise DocumentIngestionError("Source URL must start with http:// or https://")
+    if verification_status not in VERIFICATION_STATUSES:
+        raise DocumentIngestionError(
+            "Verification status must be uploaded, reviewed or verified"
+        )
 
 
 def _validate_relationships(

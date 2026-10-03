@@ -37,6 +37,8 @@ export type Publication = {
   id: string;
   title: string;
   publication_year: number | null;
+  doi: string | null;
+  source_url: string | null;
   summary: string | null;
   verification_status: string;
   is_demo_data: boolean;
@@ -46,6 +48,7 @@ export type Report = {
   id: string;
   title: string;
   publication_date: string | null;
+  source_url: string | null;
   summary: string | null;
   verification_status: string;
   is_demo_data: boolean;
@@ -56,6 +59,7 @@ export type Dataset = {
   title: string;
   description: string | null;
   file_type: string | null;
+  source_url: string | null;
   verification_status: string;
   is_demo_data: boolean;
 };
@@ -77,6 +81,7 @@ export type ExpeditionDetail = Expedition & {
   reports: Report[];
   datasets: Dataset[];
   media_assets: MediaAsset[];
+  source_documents: LinkedDocument[];
 };
 
 export type SearchResourceType =
@@ -97,6 +102,7 @@ export type SearchResult = {
   is_demo_data: boolean;
   verification_status: string | null;
   href: string | null;
+  source_url: string | null;
   match_reason: string;
   search_mode: SearchMode;
 };
@@ -105,35 +111,45 @@ export type RelatedDocumentResource = {
   id: string;
   type: string;
   title: string;
+  href: string | null;
 };
 
-export type Document = {
-  id: string;
+// Source details shown wherever a document is used as evidence.
+export type SourceProvenance = {
   title: string;
-  file_name: string;
+  file_type: string | null;
+  source_type: string | null;
+  source_url: string | null;
+  publication_date: string | null;
+  verification_status: string | null;
+  is_demo_data: boolean;
+  related_resources: RelatedDocumentResource[];
+};
+
+export type LinkedDocument = SourceProvenance & {
+  id: string;
   file_type: string;
   source_type: string;
-  publication_date: string | null;
   verification_status: string;
-  is_demo_data: boolean;
+};
+
+export type Document = LinkedDocument & {
+  file_name: string;
   chunk_count: number;
 };
 
 export type DocumentDetail = Document & {
-  source_url: string | null;
-  related_resources: RelatedDocumentResource[];
+  created_at: string;
+  first_page: number | null;
+  last_page: number | null;
 };
 
-export type AssistantSource = {
+export type AssistantSource = SourceProvenance & {
   number: number;
   document_id: string;
-  title: string;
-  file_type: string | null;
-  source_type: string | null;
   page_number: number | null;
-  source_url: string | null;
-  verification_status: string | null;
-  is_demo_data: boolean;
+  section_name: string | null;
+  match_reason: string;
   href: string;
 };
 

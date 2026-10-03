@@ -1,14 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
-import { DemoLabel } from "@/components/demo-label";
-import { Icon } from "@/components/icons";
+import { AboutSources } from "@/components/about-sources";
 import { DataMessage } from "@/components/page-heading";
-import { StatusBadge } from "@/components/status-badge";
+import { SourceCard } from "@/components/source-card";
 import { postApi } from "@/lib/api";
-import { formatStatus } from "@/lib/format";
 import type { AssistantAnswer } from "@/lib/types";
 
 const MAX_QUESTION_LENGTH = 500;
@@ -18,6 +15,27 @@ const suggestedQuestions = [
   "Why can one observation not describe Antarctic climate?",
   "What can affect which organisms are recorded in a field survey?",
 ];
+
+// Turns "Source 1" in the answer into a link to that source card. Only
+// numbers that match a returned source become links.
+function AnswerText({ answer, sourceCount }: { answer: string; sourceCount: number }) {
+  return answer.split(/(Source \d+)/g).map((part, index) => {
+    const match = /^Source (\d+)$/.exec(part);
+    const number = match ? Number(match[1]) : 0;
+    if (number >= 1 && number <= sourceCount) {
+      return (
+        <a
+          key={index}
+          className="font-medium text-sky-800 underline decoration-sky-300 hover:decoration-sky-800"
+          href={`#source-${number}`}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+}
 
 export function AssistantPanel() {
   const [question, setQuestion] = useState("");
@@ -123,8 +141,8 @@ export function AssistantPanel() {
         ) : (
           <>
             <h2 className="text-xl font-semibold text-slate-950">Answer</h2>
-            <p className="mt-4 whitespace-pre-line rounded-xl border border-slate-200 bg-white p-5 leading-7 text-slate-800 shadow-sm">
-              {result.answer}
+            <p className="mt-4 whitespace-pre-line break-words rounded-xl border border-slate-200 bg-white p-5 leading-7 text-slate-800 shadow-sm">
+              <AnswerText answer={result.answer} sourceCount={result.sources.length} />
             </p>
 
             {result.sources.length > 0 && (
@@ -132,53 +150,12 @@ export function AssistantPanel() {
                 <h2 className="mt-10 text-xl font-semibold text-slate-950">Sources</h2>
                 <ul className="mt-4 space-y-3">
                   {result.sources.map((source) => (
-                    <li
-                      key={source.number}
-                      className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
-                    >
-                      <article className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                        <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-800">
-                          <Icon name="document" className="h-5 w-5" />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-800">
-                            Source {source.number}
-                          </p>
-                          <h3 className="mt-1 font-semibold text-slate-950">{source.title}</h3>
-                          <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                            {source.source_type && (
-                              <span className="capitalize">{formatStatus(source.source_type)}</span>
-                            )}
-                            {source.file_type && (
-                              <>
-                                <span aria-hidden="true">•</span>
-                                <span className="uppercase">{source.file_type}</span>
-                              </>
-                            )}
-                            {source.page_number !== null && (
-                              <>
-                                <span aria-hidden="true">•</span>
-                                <span>Page {source.page_number}</span>
-                              </>
-                            )}
-                          </p>
-                          <Link
-                            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-sky-800 hover:underline"
-                            href={source.href}
-                          >
-                            View Source <Icon name="arrow" className="h-4 w-4" />
-                          </Link>
-                        </div>
-                        <div className="flex items-center gap-3 sm:flex-col sm:items-end">
-                          {source.is_demo_data && <DemoLabel />}
-                          {source.verification_status && (
-                            <StatusBadge status={source.verification_status} />
-                          )}
-                        </div>
-                      </article>
-                    </li>
+                    <SourceCard key={source.number} source={source} />
                   ))}
                 </ul>
+                <div className="mt-6">
+                  <AboutSources />
+                </div>
               </>
             )}
           </>
