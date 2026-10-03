@@ -61,3 +61,16 @@ const numberFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 4 });
 export function formatNumber(value: number): string {
   return numberFormat.format(value);
 }
+
+export function formatCoordinates(
+  latitude: number | null,
+  longitude: number | null,
+): string | null {
+  if (latitude === null || longitude === null) {
+    return null;
+  }
+
+  const northSouth = latitude >= 0 ? "N" : "S";
+  const eastWest = longitude >= 0 ? "E" : "W";
+  return `${Math.abs(latitude).toFixed(4)}° ${northSouth}, ${Math.abs(longitude).toFixed(4)}° ${eastWest}`;
+}

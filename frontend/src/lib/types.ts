@@ -20,6 +20,52 @@ export type Location = {
   id: string;
   name: string;
   region: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+export type MapLocationType = "station" | "expedition_location" | "other";
+
+export type MapStation = {
+  id: string;
+  name: string;
+  description: string | null;
+  verification_status: string;
+  is_demo_data: boolean;
+};
+
+export type MapExpedition = {
+  id: string;
+  name: string;
+  expedition_number: string | null;
+  verification_status: string;
+  is_demo_data: boolean;
+};
+
+export type MapRecord = {
+  id: string;
+  title: string;
+};
+
+export type MapLocation = {
+  id: string;
+  name: string;
+  region: string | null;
+  description: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  // True when the stored coordinates can be drawn on the web map.
+  mappable: boolean;
+  location_type: MapLocationType;
+  polar_region: "antarctic" | "arctic" | null;
+  is_demo_data: boolean;
+  stations: MapStation[];
+  expeditions: MapExpedition[];
+  expedition_count: number;
+  // Connected through the related expeditions, not directly to the location.
+  research_topics: { id: string; name: string }[];
+  datasets: MapRecord[];
+  documents: MapRecord[];
 };
 
 export type Expedition = {

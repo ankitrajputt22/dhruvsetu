@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { DataMessage } from "@/components/page-heading";
 import { RepositoryItem } from "@/components/repository-item";
@@ -10,6 +11,7 @@ import type {
   Dataset,
   Document,
   Expedition,
+  MapLocation,
   Publication,
   ResearchTopic,
 } from "@/lib/types";
@@ -48,13 +50,14 @@ const resources = [
 ];
 
 export default async function Home() {
-  const [expeditions, publications, datasets, documents, topics] =
+  const [expeditions, publications, datasets, documents, topics, mapLocations] =
     await Promise.all([
       getApi<Expedition[]>("/api/expeditions"),
       getApi<Publication[]>("/api/publications"),
       getApi<Dataset[]>("/api/datasets"),
       getApi<Document[]>("/api/documents"),
       getApi<ResearchTopic[]>("/api/topics"),
+      getApi<MapLocation[]>("/api/map"),
     ]);
 
   const latest = [
@@ -160,9 +163,31 @@ export default async function Home() {
                 Explore connected records from polar expeditions, research
                 stations, field observations, and scientific work.
               </p>
-              <p className="mt-6 inline-flex w-fit rounded-full bg-sky-50 px-4 py-2 text-sm font-medium text-sky-900">
-                Interactive map coming in the map phase
-              </p>
+              {mapLocations.data !== null && mapLocations.data.length > 0 && (
+                <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
+                  {[
+                    ["Locations", mapLocations.data.length],
+                    [
+                      "Research stations",
+                      mapLocations.data.reduce((total, item) => total + item.stations.length, 0),
+                    ],
+                    ["On the map", mapLocations.data.filter((item) => item.mappable).length],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                        {label}
+                      </dt>
+                      <dd className="mt-1 text-2xl font-semibold text-slate-950">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              <Link
+                className="mt-6 inline-flex w-fit items-center gap-2 rounded-lg bg-sky-800 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-900"
+                href="/map"
+              >
+                Explore Polar Map <span aria-hidden="true">→</span>
+              </Link>
             </div>
             <div className="relative min-h-72 bg-slate-200">
               <Image

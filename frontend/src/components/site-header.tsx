@@ -9,6 +9,7 @@ const navigation = [
   { href: "/publications", label: "Publications" },
   { href: "/datasets", label: "Datasets" },
   { href: "/documents", label: "Documents" },
+  { href: "/map", label: "Polar Map" },
   { href: "/assistant", label: "Ask DhruvSetu" },
 ];
 
@@ -24,9 +25,9 @@ export function SiteHeader() {
           DhruvSetu
         </Link>
 
-        <div className="hidden items-center gap-5 lg:flex">
+        <div className="hidden items-center gap-4 lg:flex xl:gap-5">
           <nav aria-label="Main navigation" className="h-full">
-            <ul className="flex h-full items-center gap-5 text-sm text-slate-200">
+            <ul className="flex h-full items-center gap-4 whitespace-nowrap text-sm text-slate-200 xl:gap-5">
               {navigation.map((item) => (
                 <li key={item.href}>
                   <Link className="py-2 transition hover:text-white" href={item.href}>
@@ -44,7 +45,7 @@ export function SiteHeader() {
             <Icon name="search" className="h-5 w-5" />
           </Link>
           <span
-            className="rounded-full border border-white/35 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
+            className="whitespace-nowrap rounded-full border border-white/35 bg-white/10 px-3 py-1.5 text-xs font-semibold text-white"
             title="Lite Mode will be available in a future phase"
           >
             Lite Mode

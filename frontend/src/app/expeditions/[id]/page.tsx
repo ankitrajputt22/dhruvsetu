@@ -9,7 +9,7 @@ import { RelatedResources } from "@/components/related-resources";
 import { OriginalSourceLink } from "@/components/source-link";
 import { VerificationBadge } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
-import { formatDate, formatDateRange } from "@/lib/format";
+import { formatCoordinates, formatDate, formatDateRange } from "@/lib/format";
 import type { ExpeditionDetail, RelatedDocumentResource } from "@/lib/types";
 
 export default async function ExpeditionDetailPage({
@@ -152,10 +152,31 @@ export default async function ExpeditionDetailPage({
                     icon="location"
                     title={location.name}
                     detail={location.region ?? "Region not listed"}
-                  />
+                  >
+                    <p className="mt-1 text-sm text-slate-600">
+                      {formatCoordinates(location.latitude, location.longitude) ??
+                        "Coordinates not stored"}
+                    </p>
+                    <Link
+                      className="mt-2 inline-flex text-sm font-semibold text-sky-800 hover:underline"
+                      href={`/map?location=${location.id}`}
+                    >
+                      View on Polar Map
+                      <span className="sr-only">: {location.name}</span>
+                    </Link>
+                  </RecordItem>
                 ))
               )}
             </RecordGrid>
+            {expedition.locations.length > 0 && (
+              <Link
+                className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-sky-800 hover:underline"
+                href={`/map?expedition=${expedition.id}`}
+              >
+                Open the Polar Map with this expedition&apos;s locations
+                <span aria-hidden="true">→</span>
+              </Link>
+            )}
           </section>
 
           <section id="research" className="scroll-mt-6">
@@ -263,15 +284,26 @@ function RecordGrid({ children }: { children: React.ReactNode }) {
   return <ul className="mt-4 grid gap-3 sm:grid-cols-2">{children}</ul>;
 }
 
-function RecordItem({ icon, title, detail }: { icon: IconName; title: string; detail: string }) {
+function RecordItem({
+  icon,
+  title,
+  detail,
+  children,
+}: {
+  icon: IconName;
+  title: string;
+  detail: string;
+  children?: React.ReactNode;
+}) {
   return (
     <li className="flex gap-3 rounded-xl border border-slate-200 bg-white p-4">
       <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-800">
         <Icon name={icon} className="h-4 w-4" />
       </span>
-      <div>
-        <p className="font-medium text-slate-950">{title}</p>
+      <div className="min-w-0">
+        <p className="break-words font-medium text-slate-950">{title}</p>
         <p className="mt-1 text-sm capitalize text-slate-600">{detail}</p>
+        {children}
       </div>
     </li>
   );

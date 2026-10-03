@@ -107,6 +107,27 @@ python -m app.search.build_index
 The prototype does not use OCR, accept public uploads, call an LLM, or generate
 answers. Source retrieval returns original text chunks for later RAG work.
 
+## Polar Map
+
+`GET /api/map` returns every repository location for the map page: name,
+region, coordinates, research stations, related expeditions, and the research
+topics, datasets and documents connected through those expeditions.
+
+- Coordinates come only from the `latitude` and `longitude` columns of the
+  `locations` table. Nothing is guessed or looked up.
+- A location without usable coordinates stays in the text list but has no
+  marker. Coordinates outside the valid range are treated as missing.
+- `location_type` is `station` when the location has a research station,
+  `expedition_location` when it is linked to an expedition, otherwise `other`.
+- `polar_region` is set from latitude only: south of 60 degrees south is
+  Antarctic, north of 66.5 degrees north is Arctic. Names are not used.
+- A standard web map cannot draw points beyond 85 degrees latitude. Those
+  locations keep their coordinates as text and are marked `mappable: false`.
+
+The frontend map uses Leaflet with OpenStreetMap standard tiles. No API key is
+needed. The demo locations have no coordinates, so the map has no markers until
+real coordinates are stored.
+
 ## Datasets
 
 Dataset records can be metadata only, or they can have one data file in
