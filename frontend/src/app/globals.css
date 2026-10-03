@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f5f8fa;
-  --foreground: #102a35;
+  --background: #f4f8fb;
+  --foreground: #0b2436;
 }
 
 @theme inline {
@@ -25,4 +25,18 @@ body {
 
 a {
   text-underline-offset: 4px;
+}
+
+::selection {
+  background: #bae6fd;
+  color: #082f49;
+}
+
+:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
+}
+
+summary::-webkit-details-marker {
+  display: none;
 }
