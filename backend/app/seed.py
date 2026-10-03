@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from dataclasses import dataclass
+from decimal import Decimal
 from uuid import NAMESPACE_URL, uuid5
 
 from sqlalchemy import func, select
@@ -75,6 +77,71 @@ DEMO_IDS = {
 }
 
 DEMO_COUNTS = {entity: len(ids) for entity, ids in DEMO_IDS.items()}
+
+
+@dataclass(frozen=True)
+class StationLocation:
+    key: str
+    station_name: str
+    location_name: str
+    region: str
+    latitude: Decimal
+    longitude: Decimal
+    published_coordinates: str
+    source: str
+
+
+# Real Indian research stations. These are the only seeded records that are
+# not demo data. Each coordinate is the value published by the National Centre
+# for Polar and Ocean Research (NCPOR), converted to decimal degrees and
+# rounded to six places. Nothing here is estimated.
+#
+# Maitri: some NCPOR data pages list slightly different coordinates. The
+# values from the NCPOR Maitri station page are used, and only those.
+STATION_LOCATIONS = (
+    StationLocation(
+        key="bharati",
+        station_name="Bharati",
+        location_name="Bharati Station",
+        region="Antarctica",
+        latitude=Decimal("-69.406833"),
+        longitude=Decimal("76.195333"),
+        published_coordinates="69°24.41′ S, 76°11.72′ E",
+        source="NCPOR Bharati station page",
+    ),
+    StationLocation(
+        key="maitri",
+        station_name="Maitri",
+        location_name="Maitri Station",
+        region="Antarctica",
+        latitude=Decimal("-70.764444"),
+        longitude=Decimal("11.734167"),
+        published_coordinates="70°45′52″ S, 11°44′03″ E",
+        source="NCPOR Maitri station page",
+    ),
+    StationLocation(
+        key="himadri",
+        station_name="Himadri",
+        location_name="Himadri Station",
+        region="Arctic",
+        latitude=Decimal("78.916667"),
+        longitude=Decimal("11.933333"),
+        published_coordinates="78°55′ N, 11°56′ E",
+        source="NCPOR Arctic data portal (Himadri)",
+    ),
+)
+
+
+def _station_id(entity: str, key: str) -> str:
+    return str(uuid5(NAMESPACE_URL, f"dhruvsetu-station:{entity}:{key}"))
+
+
+STATION_IDS = {
+    "locations": {item.key: _station_id("location", item.key) for item in STATION_LOCATIONS},
+    "research_stations": {
+        item.key: _station_id("research-station", item.key) for item in STATION_LOCATIONS
+    },
+}
 
 MODEL_BY_ENTITY = {
     "institutions": Institution,
@@ -423,13 +490,51 @@ def seed_demo_data(session: Session) -> dict[str, int]:
     return _count_demo_records(session)
 
 
+def seed_station_locations(session: Session) -> int:
+    """Add the real station locations, or bring them back to the published values.
+
+    No expeditions are linked here. The demo expeditions stay demo content and
+    are not connected to real stations.
+    """
+    for item in STATION_LOCATIONS:
+        location_id = STATION_IDS["locations"][item.key]
+        location = session.get(Location, location_id)
+        if location is None:
+            location = Location(id=location_id)
+            session.add(location)
+        location.name = item.location_name
+        location.region = item.region
+        location.latitude = item.latitude
+        location.longitude = item.longitude
+        location.description = (
+            f"Location of India's {item.station_name} research station. "
+            f"Coordinates {item.published_coordinates}, from the {item.source}."
+        )
+
+        station_id = STATION_IDS["research_stations"][item.key]
+        station = session.get(ResearchStation, station_id)
+        if station is None:
+            # A new station starts as "uploaded". A status set later is kept.
+            station = ResearchStation(id=station_id, verification_status="uploaded")
+            session.add(station)
+        station.name = item.station_name
+        station.location = location
+        place = "the Arctic" if item.region == "Arctic" else item.region
+        station.description = f"Indian research station in {place}."
+
+    session.commit()
+    return len(STATION_LOCATIONS)
+
+
 def main() -> None:
     with SessionLocal() as session:
         summary = seed_demo_data(session)
+        station_count = seed_station_locations(session)
 
     print("DhruvSetu demo data is ready:")
     for entity, expected in DEMO_COUNTS.items():
         print(f"- {entity.replace('_', ' ').title()}: {summary[entity]}/{expected}")
+    print(f"Real station locations with published coordinates: {station_count}")
 
 
 if __name__ == "__main__":
