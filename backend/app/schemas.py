@@ -109,6 +109,29 @@ class MediaAssetSummary(ApiSchema):
     is_demo_data: bool
 
 
+class RelatedDocumentResource(ApiSchema):
+    id: str
+    type: str
+    title: str
+
+
+class DocumentSummary(ApiSchema):
+    id: str
+    title: str
+    file_name: str
+    file_type: str
+    source_type: str
+    publication_date: date | None
+    verification_status: str
+    is_demo_data: bool
+    chunk_count: int
+
+
+class DocumentDetail(DocumentSummary):
+    source_url: str | None
+    related_resources: list[RelatedDocumentResource]
+
+
 class ExpeditionDetail(ExpeditionSummary):
     scientists: list[ScientistSummary]
     research_topics: list[ResearchTopicSummary]

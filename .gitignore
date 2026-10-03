@@ -1,3 +1,7 @@
 .env
 backend/.cache/
 backend/data/semantic_search/
+backend/data/documents/*
+!backend/data/documents/demo-antarctic-climate.txt
+!backend/data/documents/demo-polar-biodiversity.txt
+!backend/data/documents/demo-sea-ice-observations.txt

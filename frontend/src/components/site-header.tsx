@@ -8,6 +8,7 @@ const navigation = [
   { href: "/scientists", label: "Scientists" },
   { href: "/publications", label: "Publications" },
   { href: "/datasets", label: "Datasets" },
+  { href: "/documents", label: "Documents" },
 ];
 
 export function SiteHeader() {

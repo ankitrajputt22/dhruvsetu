@@ -1,0 +1,9 @@
+Prototype Data - Polar Biodiversity Field Guide Notes
+
+This prototype source is designed to test document storage, chunking, and semantic retrieval. It does not represent a real field guide or an official biodiversity survey.
+
+The fictional field checklist groups observations by habitat, date, and broad organism type. It asks observers to record environmental context without disturbing wildlife. Repeated notes can help a research team compare which organisms were seen near coastal water, snow, exposed rock, or sea ice.
+
+The guide states that the absence of an observation is not proof that a species is absent. Weather, visibility, season, and observation effort can all affect what is recorded. Source details should remain attached when a note is retrieved so that readers can distinguish this demo material from verified scientific information.
+
+Every statement in this file is fictional prototype content created for DhruvSetu testing.

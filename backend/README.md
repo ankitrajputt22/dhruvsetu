@@ -71,3 +71,38 @@ Then start the API normally with `uvicorn app.main:app --reload` and start the
 frontend with `npm run dev` from the `frontend` folder. On the search page,
 choose **Keyword** for MySQL text search or **Semantic** for related meanings.
 Generated model-cache and index files stay outside Git.
+
+## Source documents
+
+The ingestion command supports UTF-8 TXT files and text-based PDFs. It keeps
+the original file on disk, stores source metadata and chunks in MySQL, and uses
+a SHA-256 file hash to prevent duplicates.
+
+```bash
+python -m app.ingestion.ingest /path/to/source.txt --title "Source title"
+```
+
+Optional flags can connect the source to an existing record:
+
+```bash
+python -m app.ingestion.ingest /path/to/source.pdf \
+  --title "Source title" \
+  --source-type "research_report" \
+  --report-id "existing-report-id"
+```
+
+Add the three small prototype documents used by the project:
+
+```bash
+python -m app.ingestion.seed_demo
+```
+
+Rebuild the local semantic index after ingesting documents so their chunks are
+available to source retrieval:
+
+```bash
+python -m app.search.build_index
+```
+
+The prototype does not use OCR, accept public uploads, call an LLM, or generate
+answers. Source retrieval returns original text chunks for later RAG work.
