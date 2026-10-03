@@ -2,14 +2,14 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.database import SessionLocal
 from app.geo import fits_web_map, polar_region, valid_coordinates
 from app.ingestion.seed_demo import seed_demo_documents
 from app.main import app
 from app.models import Expedition, Location, ResearchStation
-from app.seed import DEMO_IDS
+from app.seed import DEMO_IDS, STATION_IDS, STATION_LOCATIONS, seed_station_locations
 
 client = TestClient(app)
 
@@ -270,3 +270,126 @@ def test_expedition_detail_includes_location_coordinates(make_location) -> None:
     assert locations[impossible]["latitude"] is None
     assert locations[impossible]["longitude"] is None
     assert locations[DEMO_IDS["locations"]["ocean"]]["latitude"] is None
+
+
+# Published NCPOR coordinates, as decimal degrees.
+OFFICIAL_COORDINATES = {
+    "bharati": (-69.406833, 76.195333, "antarctic"),
+    "maitri": (-70.764444, 11.734167, "antarctic"),
+    "himadri": (78.916667, 11.933333, "arctic"),
+}
+
+
+def _seed_stations() -> None:
+    with SessionLocal() as session:
+        seed_station_locations(session)
+
+
+def test_station_locations_are_seeded_with_published_coordinates() -> None:
+    _seed_stations()
+
+    assert {item.key for item in STATION_LOCATIONS} == set(OFFICIAL_COORDINATES)
+    with SessionLocal() as session:
+        for key, (latitude, longitude, _) in OFFICIAL_COORDINATES.items():
+            location = session.get(Location, STATION_IDS["locations"][key])
+            station = session.get(ResearchStation, STATION_IDS["research_stations"][key])
+            assert location is not None and station is not None
+            assert location.latitude == Decimal(str(latitude))
+            assert location.longitude == Decimal(str(longitude))
+            assert -90 <= location.latitude <= 90
+            assert -180 <= location.longitude <= 180
+            assert station.location_id == location.id
+            # The source of the coordinates is kept with the record.
+            assert "NCPOR" in location.description
+
+
+def test_map_returns_station_coordinates_and_polar_regions() -> None:
+    _seed_stations()
+    locations = _map()
+
+    for key, (latitude, longitude, region) in OFFICIAL_COORDINATES.items():
+        location = locations[STATION_IDS["locations"][key]]
+        assert location["latitude"] == latitude
+        assert location["longitude"] == longitude
+        assert location["mappable"] is True
+        assert location["polar_region"] == region
+        assert location["location_type"] == "station"
+        assert [item["id"] for item in location["stations"]] == [
+            STATION_IDS["research_stations"][key]
+        ]
+        # Real station metadata is not demo data and is not linked to the
+        # demo expeditions.
+        assert location["is_demo_data"] is False
+        assert location["stations"][0]["is_demo_data"] is False
+        assert location["expedition_count"] == 0
+        assert location["expeditions"] == []
+
+    assert locations[STATION_IDS["locations"]["bharati"]]["name"] == "Bharati Station"
+    assert locations[STATION_IDS["locations"]["himadri"]]["region"] == "Arctic"
+
+
+def test_station_seed_does_not_touch_demo_locations() -> None:
+    seed_demo_documents()
+    _seed_stations()
+    locations = _map()
+
+    for location_id in DEMO_IDS["locations"].values():
+        assert locations[location_id]["latitude"] is None
+        assert locations[location_id]["mappable"] is False
+        assert locations[location_id]["is_demo_data"] is True
+
+
+def test_station_seed_is_idempotent() -> None:
+    _seed_stations()
+    with SessionLocal() as session:
+        locations_before = session.scalar(select(func.count()).select_from(Location))
+        stations_before = session.scalar(select(func.count()).select_from(ResearchStation))
+
+    _seed_stations()
+    _seed_stations()
+
+    with SessionLocal() as session:
+        assert session.scalar(select(func.count()).select_from(Location)) == locations_before
+        assert (
+            session.scalar(select(func.count()).select_from(ResearchStation))
+            == stations_before
+        )
+        for item in STATION_LOCATIONS:
+            assert (
+                session.scalar(
+                    select(func.count())
+                    .select_from(Location)
+                    .where(Location.name == item.location_name)
+                )
+                == 1
+            )
+            assert (
+                session.scalar(
+                    select(func.count())
+                    .select_from(ResearchStation)
+                    .where(ResearchStation.name == item.station_name)
+                )
+                == 1
+            )
+
+
+def test_station_seed_restores_coordinates_and_keeps_verification_status() -> None:
+    _seed_stations()
+    location_id = STATION_IDS["locations"]["maitri"]
+    station_id = STATION_IDS["research_stations"]["maitri"]
+    try:
+        with SessionLocal() as session:
+            session.get(Location, location_id).latitude = Decimal("-10")
+            session.get(ResearchStation, station_id).verification_status = "reviewed"
+            session.commit()
+
+        _seed_stations()
+
+        with SessionLocal() as session:
+            assert session.get(Location, location_id).latitude == Decimal("-70.764444")
+            # Seeding never changes a status a person has set.
+            assert session.get(ResearchStation, station_id).verification_status == "reviewed"
+    finally:
+        with SessionLocal() as session:
+            session.get(ResearchStation, station_id).verification_status = "uploaded"
+            session.commit()

@@ -55,8 +55,12 @@ python -m app.seed
 ```
 
 The seed is safe to run again. It keeps the same demo records and does not
-delete other data. All seeded content is clearly marked as demo or prototype
+delete other data. Seeded demo content is clearly marked as demo or prototype
 data and must not be treated as real scientific information.
+
+The seed also adds three real station locations (Bharati, Maitri and Himadri)
+with their published NCPOR coordinates. They are not demo data and are not
+linked to the demo expeditions. See "Polar Map" below for the sources.
 
 ## Semantic search
 
@@ -125,8 +129,29 @@ topics, datasets and documents connected through those expeditions.
   locations keep their coordinates as text and are marked `mappable: false`.
 
 The frontend map uses Leaflet with OpenStreetMap standard tiles. No API key is
-needed. The demo locations have no coordinates, so the map has no markers until
-real coordinates are stored.
+needed. The demo locations have no coordinates and have no markers.
+
+### Station coordinates
+
+`python -m app.seed` adds three real station locations. Each coordinate is the
+value published by the National Centre for Polar and Ocean Research (NCPOR),
+converted to decimal degrees and rounded to six places. No coordinate is
+estimated, and the published form is the limit of its precision.
+
+| Station | Published coordinate | Stored latitude | Stored longitude | Source |
+|---|---|---|---|---|
+| Bharati | 69°24.41′ S, 76°11.72′ E | -69.406833 | 76.195333 | NCPOR Bharati station page |
+| Maitri | 70°45′52″ S, 11°44′03″ E | -70.764444 | 11.734167 | NCPOR Maitri station page |
+| Himadri | 78°55′ N, 11°56′ E | 78.916667 | 11.933333 | NCPOR Arctic data portal (Himadri) |
+
+Some NCPOR data pages list slightly different coordinates for Maitri. This
+project uses the NCPOR Maitri station page values only, so that values from
+different pages are never mixed.
+
+The source is also written in each location's description. The locations table
+has no source URL column, so no URL is stored. Running the seed again puts
+these coordinates back to the published values. It does not change a station's
+verification status, which starts as `uploaded`.
 
 ## Datasets
 
