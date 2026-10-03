@@ -1,5 +1,10 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 
 app = FastAPI(
     title="DhruvSetu API",
@@ -27,3 +32,16 @@ def read_root() -> dict[str, str]:
 @app.get("/health")
 def read_health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/health/database")
+def read_database_health(db: Session = Depends(get_db)) -> dict[str, str]:
+    try:
+        db.execute(text("SELECT 1"))
+    except SQLAlchemyError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection is unavailable",
+        ) from error
+
+    return {"status": "ok", "database": "connected"}
