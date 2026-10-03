@@ -57,3 +57,17 @@ python -m app.seed
 The seed is safe to run again. It keeps the same demo records and does not
 delete other data. All seeded content is clearly marked as demo or prototype
 data and must not be treated as real scientific information.
+
+## Semantic search
+
+Semantic search finds records with related meaning. It uses a small local model
+and does not need an API key. Build or rebuild the local index from MySQL:
+
+```bash
+python -m app.search.build_index
+```
+
+Then start the API normally with `uvicorn app.main:app --reload` and start the
+frontend with `npm run dev` from the `frontend` folder. On the search page,
+choose **Keyword** for MySQL text search or **Semantic** for related meanings.
+Generated model-cache and index files stay outside Git.

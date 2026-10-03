@@ -17,6 +17,11 @@ class SearchResourceType(StrEnum):
     report = "report"
 
 
+class SearchMode(StrEnum):
+    keyword = "keyword"
+    semantic = "semantic"
+
+
 class SearchResult(ApiSchema):
     id: str
     type: SearchResourceType
@@ -26,6 +31,7 @@ class SearchResult(ApiSchema):
     verification_status: str | None
     href: str | None
     match_reason: str
+    search_mode: SearchMode
 
 
 class InstitutionSummary(ApiSchema):

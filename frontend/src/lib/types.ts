@@ -87,6 +87,8 @@ export type SearchResourceType =
   | "topic"
   | "report";
 
+export type SearchMode = "keyword" | "semantic";
+
 export type SearchResult = {
   id: string;
   type: SearchResourceType;
@@ -96,4 +98,5 @@ export type SearchResult = {
   verification_status: string | null;
   href: string | null;
   match_reason: string;
+  search_mode: SearchMode;
 };
