@@ -8,6 +8,7 @@ const links = [
   { href: "/publications", label: "Publications" },
   { href: "/datasets", label: "Datasets" },
   { href: "/documents", label: "Documents" },
+  { href: "/assistant", label: "Ask DhruvSetu" },
 ];
 
 export function SiteFooter() {

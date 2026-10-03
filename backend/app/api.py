@@ -4,6 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from app.assistant.service import (
+    AssistantNotConfigured,
+    AssistantProviderError,
+    AssistantRetrievalError,
+    AssistantTimeout,
+    answer_question,
+)
 from app.database import get_db
 from app.models import (
     Dataset,
@@ -20,6 +27,9 @@ from app.search.semantic import (
     search_semantic_index,
 )
 from app.schemas import (
+    AssistantAnswer,
+    AssistantQuestion,
+    AssistantSource,
     DatasetSummary,
     DocumentDetail,
     DocumentSummary,
@@ -299,6 +309,61 @@ def search(
         )
 
     return results
+
+
+@router.post("/assistant/ask", response_model=AssistantAnswer)
+def ask_assistant(
+    payload: AssistantQuestion,
+    db: Session = Depends(get_db),
+) -> AssistantAnswer:
+    question = payload.question.strip()
+    if not question:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Question cannot be empty",
+        )
+
+    try:
+        result = answer_question(db, question)
+    except AssistantNotConfigured as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI assistant is not configured.",
+        ) from error
+    except AssistantRetrievalError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Source search is not ready right now. Please try again later.",
+        ) from error
+    except AssistantTimeout as error:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="The AI assistant took too long to answer. Please try again.",
+        ) from error
+    except AssistantProviderError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The AI assistant could not answer right now. Please try again.",
+        ) from error
+
+    return AssistantAnswer(
+        answer=result.answer,
+        sources=[
+            AssistantSource(
+                number=number,
+                document_id=source.document_id,
+                title=source.document_title,
+                file_type=source.file_type,
+                source_type=source.source_type,
+                page_number=source.page_number,
+                source_url=source.source_url,
+                verification_status=source.verification_status,
+                is_demo_data=source.is_demo_data,
+                href=f"/documents/{source.document_id}",
+            )
+            for number, source in enumerate(result.sources, start=1)
+        ],
+    )
 
 
 @router.get("/expeditions", response_model=list[ExpeditionSummary])

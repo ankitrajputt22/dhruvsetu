@@ -1,7 +1,7 @@
 from datetime import date
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ApiSchema(BaseModel):
@@ -130,6 +130,28 @@ class DocumentSummary(ApiSchema):
 class DocumentDetail(DocumentSummary):
     source_url: str | None
     related_resources: list[RelatedDocumentResource]
+
+
+class AssistantQuestion(BaseModel):
+    question: str = Field(max_length=500)
+
+
+class AssistantSource(ApiSchema):
+    number: int
+    document_id: str
+    title: str
+    file_type: str | None
+    source_type: str | None
+    page_number: int | None
+    source_url: str | None
+    verification_status: str | None
+    is_demo_data: bool
+    href: str
+
+
+class AssistantAnswer(ApiSchema):
+    answer: str
+    sources: list[AssistantSource]
 
 
 class ExpeditionDetail(ExpeditionSummary):

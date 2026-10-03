@@ -123,3 +123,21 @@ export type DocumentDetail = Document & {
   source_url: string | null;
   related_resources: RelatedDocumentResource[];
 };
+
+export type AssistantSource = {
+  number: number;
+  document_id: string;
+  title: string;
+  file_type: string | null;
+  source_type: string | null;
+  page_number: number | null;
+  source_url: string | null;
+  verification_status: string | null;
+  is_demo_data: boolean;
+  href: string;
+};
+
+export type AssistantAnswer = {
+  answer: string;
+  sources: AssistantSource[];
+};
