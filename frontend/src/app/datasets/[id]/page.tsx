@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { AboutSources } from "@/components/about-sources";
+import { DatasetDataLabAction } from "@/components/data-lab-access";
 import { DatasetPreviewPanel } from "@/components/dataset-preview";
 import { DemoLabel } from "@/components/demo-label";
 import { Icon, type IconName } from "@/components/icons";
@@ -10,7 +11,8 @@ import { RelatedResources } from "@/components/related-resources";
 import { OriginalSourceLink } from "@/components/source-link";
 import { VerificationBadge } from "@/components/verification-badge";
 import { VerificationSummary } from "@/components/verification-summary";
-import { apiUrl, getApi } from "@/lib/api";
+import { getApi } from "@/lib/api";
+import { getCurrentUser } from "@/lib/auth-server";
 import { formatDate, formatFileSize, safeExternalUrl } from "@/lib/format";
 import type { DataLabStatus, DatasetDetail } from "@/lib/types";
 
@@ -40,11 +42,12 @@ export default async function DatasetDetailPage({
   const dataset = result.data;
   const file = dataset.file;
   const dataLab = (await getApi<DataLabStatus>("/api/data-lab/status")).data;
-  const opensInDataLab =
+  const dataLabSupportsFile =
     dataLab?.enabled === true &&
     file?.available === true &&
     file.file_type !== null &&
     dataLab.supported_file_types.includes(file.file_type);
+  const user = await getCurrentUser();
   const sourceUrl = safeExternalUrl(dataset.source_url);
   const fileType = file?.file_type ?? dataset.file_type;
 
@@ -174,7 +177,7 @@ export default async function DatasetDetailPage({
               {file?.available ? (
                 <a
                   className="mt-2 inline-flex items-center gap-2 rounded-lg border border-sky-800 bg-sky-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-900"
-                  href={apiUrl(`/api/datasets/${encodeURIComponent(dataset.id)}/download`)}
+                  href={`/api/datasets/${encodeURIComponent(dataset.id)}/download`}
                 >
                   Download Dataset
                   {file.size_bytes !== null && (
@@ -192,25 +195,12 @@ export default async function DatasetDetailPage({
 
             <section className="rounded-xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-950">Polar Data Lab</h2>
-              {opensInDataLab ? (
-                <>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Analyse this dataset with Python in a temporary session.
-                  </p>
-                  <Link
-                    className="mt-3 inline-flex items-center gap-2 rounded-lg border border-sky-800 bg-sky-800 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-900"
-                    href={`/data-lab?dataset=${dataset.id}`}
-                  >
-                    Open in Polar Data Lab <span aria-hidden="true">→</span>
-                  </Link>
-                </>
-              ) : (
-                <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {dataLab?.enabled === true
-                    ? "This dataset cannot currently be opened in Polar Data Lab. A CSV or JSON data file is needed."
-                    : "Polar Data Lab is not enabled on this server."}
-                </p>
-              )}
+              <DatasetDataLabAction
+                datasetId={dataset.id}
+                enabled={dataLab?.enabled === true}
+                fileSupported={dataLabSupportsFile}
+                user={user}
+              />
             </section>
 
             <AboutSources />

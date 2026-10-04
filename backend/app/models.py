@@ -7,6 +7,7 @@ from uuid import uuid4
 from sqlalchemy import (
     CHAR,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -28,6 +29,10 @@ from app.database import Base
 # uploaded = added but not reviewed, reviewed = checked by a human,
 # verified = source details and content confirmed for the prototype.
 VERIFICATION_STATUSES = ("uploaded", "reviewed", "verified")
+
+# The only application roles. Student, Teacher, Journalist and Public are
+# outreach content modes, not roles.
+USER_ROLES = ("user", "researcher", "admin")
 
 
 def new_uuid() -> str:
@@ -461,3 +466,68 @@ class DocumentChunk(UUIDMixin, Base):
     )
 
     document: Mapped[Document] = relationship(back_populates="chunks")
+
+
+class User(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "role in ('user', 'researcher', 'admin')",
+            name="ck_users_role",
+        ),
+    )
+
+    # Stored in lower case so that an address can only be registered once.
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(120))
+    role: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="user", server_default="user"
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("1")
+    )
+
+    sessions: Mapped[list[UserSession]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class UserSession(UUIDMixin, Base):
+    __tablename__ = "user_sessions"
+
+    user_id: Mapped[str] = mapped_column(
+        CHAR(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    # Only a hash of the session token is stored, never the token itself.
+    token_hash: Mapped[str] = mapped_column(CHAR(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class VerificationChange(UUIDMixin, Base):
+    """One change of a record's verification status, and who made it."""
+
+    __tablename__ = "verification_changes"
+
+    record_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    record_id: Mapped[str] = mapped_column(CHAR(36), nullable=False, index=True)
+    from_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    to_status: Mapped[str] = mapped_column(String(20), nullable=False)
+    changed_by_user_id: Mapped[str | None] = mapped_column(
+        CHAR(36), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    changed_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+    changed_by: Mapped[User | None] = relationship()

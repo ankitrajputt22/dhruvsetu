@@ -46,6 +46,119 @@ alembic upgrade head
 Check the live database connection at
 [http://127.0.0.1:8000/health/database](http://127.0.0.1:8000/health/database).
 
+## Accounts and roles
+
+The repository is open. Nobody has to log in to read expeditions, scientists,
+publications, datasets, documents, the Polar Map, search, citations, Outreach
+Studio or the assistant. Login is only needed for Polar Data Lab and the admin
+area.
+
+| Role | What it adds |
+|---|---|
+| `user` | Nothing beyond what a visitor can do. Every new account gets this role. |
+| `researcher` | Polar Data Lab. |
+| `admin` | Polar Data Lab, the admin area, verification status changes, and giving or removing the researcher role. |
+
+Student, Teacher, Journalist and Public are audience settings in Outreach
+Studio. They are not login roles and give no permissions.
+
+### How login works
+
+- Accounts are local: an email address and a password of 10 to 128 characters.
+  Passwords are hashed with Argon2id (`argon2-cffi`). They are never stored,
+  logged or returned by the API.
+- Login creates a random session token. The browser gets it in the
+  `dhruvsetu_session` cookie, which is HTTP-only (page scripts cannot read it)
+  and `SameSite=Lax`. The database keeps only a SHA-256 hash of the token and
+  its expiry time, in `user_sessions`.
+- Logout deletes the session row, so the token stops working at once. A
+  session also ends after `SESSION_EXPIRE_MINUTES`, and when the account's
+  role or password is changed.
+- Nothing is kept in `localStorage`, and no signing secret is needed.
+- A request that changes something (`POST`, `PATCH`, `DELETE`) must come from
+  an origin listed in `FRONTEND_ORIGINS`. This check, the `SameSite` cookie and
+  JSON-only request bodies together protect against cross-site request
+  forgery. CORS is not relied on for this.
+- After 5 failed logins for one email address, more attempts for it are
+  refused for 5 minutes.
+- The frontend passes browser requests for `/api/...` on to this API, so the
+  cookie belongs to the site the user is looking at.
+
+### Endpoints and permissions
+
+| Endpoint | Who | Notes |
+|---|---|---|
+| `POST /api/auth/register` | Anyone | Creates a `user` account and logs it in. A `role` field is rejected. |
+| `POST /api/auth/login` | Anyone | One error message for every failure, so it does not show which accounts exist. |
+| `POST /api/auth/logout` | Anyone | Ends the session and clears the cookie. |
+| `GET /api/auth/me` | Signed in | Returns only the id, email, display name and role. |
+| `POST` and `DELETE` under `/api/data-lab/sessions` | `researcher`, `admin` | Also needs `DATA_LAB_ENABLED=true`. |
+| Everything under `/api/admin` | `admin` | Verification and accounts. |
+
+A request without a valid login gets `401`. A request from an account without
+the needed role gets `403`. The frontend hides links a role cannot use, but the
+API makes the decision on every request.
+
+The checks are FastAPI dependencies in `app/auth/dependencies.py`:
+`get_current_user`, `require_user`, `require_role(...)`, `require_researcher`,
+`require_admin` and `verify_origin`. New protected routes should use these.
+
+### Create local accounts
+
+Registration only creates `user` accounts. Admin and researcher accounts are
+made with a command. Put the values in the root `.env` file, which Git ignores:
+
+```bash
+SEED_ADMIN_EMAIL=
+SEED_ADMIN_PASSWORD=
+SEED_RESEARCHER_EMAIL=
+SEED_RESEARCHER_PASSWORD=
+SEED_USER_EMAIL=
+SEED_USER_PASSWORD=
+```
+
+Then run this from the backend folder:
+
+```bash
+python -m app.auth.seed_accounts
+```
+
+The command creates each account, or updates the password and role of one that
+already exists. It never prints a password. An account whose email or password
+is not set is skipped. Choose your own passwords and do not commit them.
+
+This command is the only way to create or change an admin. The admin page
+cannot change an admin account, so the last admin cannot be removed there by
+mistake. An admin can give or remove the researcher role at `/admin/users`
+(`PATCH /api/admin/users/{id}/role` with `user` or `researcher`).
+
+### Settings
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `SESSION_EXPIRE_MINUTES` | `480` | How long a login lasts. |
+| `AUTH_COOKIE_SECURE` | `false` | Set to `true` when the site is served over HTTPS, so the cookie is only sent over HTTPS. |
+| `FRONTEND_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated addresses of the frontend that may send changing requests. |
+| `SEED_*_EMAIL`, `SEED_*_PASSWORD` | empty | Used only by the account command above. |
+
+### Limits of this prototype
+
+- There is no password reset, no email verification and no email is sent. A
+  forgotten password is replaced with the account command.
+- There is no login through another service (OAuth or single sign-on).
+- The failed-login limit is kept in the memory of one API process. It is reset
+  when the API restarts and is not shared between several workers.
+- There is no page to disable or delete an account. The `is_active` column
+  exists, and an inactive account cannot log in, but it is set in the database.
+- A changing request that has neither an `Origin` nor a `Referer` header is
+  accepted, so command-line tools work. Browsers send one of them.
+- Opening the site by another address, such as a network IP, needs that
+  address in `FRONTEND_ORIGINS`.
+
+Before any public deployment: serve the site over HTTPS, set
+`AUTH_COOKIE_SECURE=true`, set `FRONTEND_ORIGINS` to the real address, add a
+password reset, and use a shared rate limit.
+
 ## Demo data
 
 Add the small prototype dataset after migrations are current:
@@ -171,6 +284,11 @@ DATA_LAB_ENABLED=true
 Without `DATA_LAB_ENABLED=true` every Data Lab endpoint except the status
 check returns `403`, and the frontend shows that the Data Lab is not available.
 
+Starting, using and ending a session also needs a login with the `researcher`
+or `admin` role (see [Accounts and roles](#accounts-and-roles)). Without a
+login these calls return `401`, and with the `user` role they return `403`. A
+session can only be used and ended by the account that started it.
+
 ### How a session works
 
 - `GET /api/data-lab/status` says whether the Data Lab is enabled.
@@ -221,8 +339,8 @@ variables from the host are passed in.
 
 ### Security limits of this prototype
 
-- There is no login. Anyone who can reach the API while `DATA_LAB_ENABLED` is
-  true can run Python in a container. Keep it on a local machine only.
+- Any researcher or admin account can run Python in a container while
+  `DATA_LAB_ENABLED` is true. Give those roles only to people you trust.
 - Isolation relies on Docker. A container is not as strong a boundary as a
   virtual machine or a sandbox such as gVisor, so a container-escape bug in
   Docker or the kernel would reach the host.
@@ -230,11 +348,10 @@ variables from the host are passed in.
   the same Docker access as the user who runs it.
 - Sessions live in the memory of one API process. Several API workers, or
   several servers, are not supported.
-- Session ids are random and unguessable, but they are the only thing that
-  protects a session. They are not tied to a user.
+- The limit of 3 sessions is for the whole server. There is no limit per
+  account.
 
-Before any public deployment, add authentication, per-user limits and stronger
-isolation.
+Before any public deployment, add per-user limits and stronger isolation.
 
 ### Tests
 
@@ -341,6 +458,33 @@ python -m app.ingestion.ingest /path/to/source.pdf \
 
 The source URL must start with `http://` or `https://`. Demo data is a separate
 flag (`--demo`) and does not replace the verification status.
+
+### Admin review
+
+Admins change the status at `/admin` in the frontend. The page uses these
+endpoints, which all need an admin login:
+
+- `GET /api/admin/summary` - how many records of each type have each status
+- `GET /api/admin/records?status=uploaded&type=dataset` - the verification
+  queue (`status` defaults to `uploaded`, `type` is optional)
+- `GET /api/admin/records/{type}/{id}` - what the reviewer sees before deciding
+- `PATCH /api/admin/records/{type}/{id}/verification` with
+  `{"status": "reviewed"}` - the change
+
+The record types are `expedition`, `publication`, `report`, `dataset`,
+`document`, `station` and `media`. An unknown type or status returns `422` and
+an unknown ID returns `404`.
+
+A record moves forward one step at a time: Uploaded, then Reviewed, then
+Verified. It can be moved back to an earlier status if a change was a mistake.
+Going from Uploaded straight to Verified returns `409`. Nothing is verified
+automatically, and Demo Data stays a separate label. The stations Bharati,
+Maitri and Himadri stay Uploaded until an admin reviews them.
+
+Every change is saved in `verification_changes`: the record, the old and new
+status, the admin who made it and the time. The review page shows the latest
+20 changes for the record. The public pages read the same status, so the badge
+on a public page changes as soon as the admin changes it.
 
 ## AI assistant
 

@@ -11,8 +11,10 @@ Copy the safe API setting before starting the frontend:
 cp .env.example .env.local
 ```
 
-The default value connects the frontend to FastAPI at
-`http://127.0.0.1:8000`.
+The default value, `API_URL=http://127.0.0.1:8000`, is the address of the
+FastAPI backend. It is used only on the server and is not sent to the browser.
+The browser calls `/api/...` on the frontend's own address, and Next.js passes
+those calls on to the backend (see `next.config.ts`).
 
 ```bash
 npm install
@@ -30,6 +32,37 @@ npm run build
 ```
 
 `npm test` runs the component tests in `src/**/*.test.tsx` with Vitest.
+
+## Login and roles
+
+Browsing needs no login. The header shows "Login" to a visitor, and the name,
+role and "Logout" to a signed-in account. There are three roles: `user`,
+`researcher` and `admin`. Student, Teacher, Journalist and Public are Outreach
+Studio audience settings, not roles.
+
+| Page | Who can use it |
+|---|---|
+| `/login`, `/register` | Anyone. Registration always creates a `user` account. |
+| `/data-lab` | `researcher` and `admin`. Others see "Polar Data Lab is available to research users." |
+| `/admin`, `/admin/records/...` | `admin`. Verification counts, the queue, and the review page. |
+| `/admin/users` | `admin`. Switches an account between `user` and `researcher`. |
+
+How it fits together:
+
+- The login cookie is HTTP-only. Page scripts never see it, and nothing about
+  the login is kept in `localStorage`.
+- The root layout asks the backend who is signed in (`getCurrentUser` in
+  `src/lib/auth-server.ts`) and shares the answer through `AuthProvider`
+  (`src/components/auth.tsx`). Client components read it with `useAuth()`.
+- Hiding a link or a page is only for convenience. The backend checks the
+  login and the role on every protected request, so a hidden control that is
+  called anyway is refused.
+- The "Admin" entry is shown only to admins. A signed-out visitor who opens
+  `/admin` is sent to `/login` and returned after logging in.
+- Lite Mode works the same signed in or signed out.
+
+Accounts, the admin and researcher setup command, and the security limits are
+described in the backend README under "Accounts and roles".
 
 ## Lite Mode
 

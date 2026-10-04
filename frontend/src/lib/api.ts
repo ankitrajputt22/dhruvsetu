@@ -2,11 +2,14 @@ export type ApiResult<T> =
   | { data: T; status: number; detail: null }
   | { data: null; status: number | null; detail: string | null };
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const SERVER_API_URL =
+  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
+// On the server the API is called directly. In the browser every call goes to
+// this site, which passes it on to the API (see next.config.ts), so the login
+// cookie is sent with it.
 export function apiUrl(path: string): string {
-  return `${API_URL}${path}`;
+  return typeof window === "undefined" ? `${SERVER_API_URL}${path}` : path;
 }
 
 async function readResult<T>(response: Response): Promise<ApiResult<T>> {
@@ -40,6 +43,20 @@ export async function postApi<T>(
     return await readResult<T>(
       await fetch(apiUrl(path), {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+    );
+  } catch {
+    return { data: null, status: null, detail: null };
+  }
+}
+
+export async function patchApi<T>(path: string, body: unknown): Promise<ApiResult<T>> {
+  try {
+    return await readResult<T>(
+      await fetch(apiUrl(path), {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       }),

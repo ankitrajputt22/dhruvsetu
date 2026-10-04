@@ -16,6 +16,7 @@ from app.datasets.files import DATASET_STORE, attach_dataset_file
 from app.main import app
 from app.models import Dataset
 from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS, seed_demo_data
+from conftest import create_test_user, delete_test_users, log_in
 
 client = TestClient(app)
 
@@ -75,10 +76,15 @@ def lab(monkeypatch):
     monkeypatch.delenv("DATA_LAB_IDLE_TIMEOUT_MINUTES", raising=False)
     monkeypatch.setattr(sessions, "start_container", fake_start)
     sessions.end_all_sessions()
+    # The Data Lab is for research users, so these tests sign in as one.
+    researcher = create_test_user("researcher")
+    assert log_in(client, researcher).status_code == 200
     try:
         yield started
     finally:
         sessions.end_all_sessions()
+        client.cookies.clear()
+        delete_test_users([researcher.id])
 
 
 @pytest.fixture
@@ -110,7 +116,7 @@ def _execute(session_id: str, code: str):
     return client.post(f"{SESSIONS_URL}/{session_id}/execute", json={"code": code})
 
 
-def test_data_lab_is_off_unless_enabled(monkeypatch) -> None:
+def test_data_lab_is_off_unless_enabled(monkeypatch, client_as) -> None:
     monkeypatch.delenv("DATA_LAB_ENABLED", raising=False)
     monkeypatch.setattr(
         sessions,
@@ -118,23 +124,26 @@ def test_data_lab_is_off_unless_enabled(monkeypatch) -> None:
         lambda *args: pytest.fail("No container may start while the Data Lab is off"),
     )
     session_id = "0" * 32
+    # Even a research user cannot run code while the switch is off.
+    researcher = client_as("researcher")
 
     assert client.get("/api/data-lab/status").json()["enabled"] is False
     for response in (
-        _create(),
-        _execute(session_id, "1 + 1"),
-        client.delete(f"{SESSIONS_URL}/{session_id}"),
+        researcher.post(SESSIONS_URL, json={"dataset_id": PREVIEW_ID}),
+        researcher.post(f"{SESSIONS_URL}/{session_id}/execute", json={"code": "1 + 1"}),
+        researcher.delete(f"{SESSIONS_URL}/{session_id}"),
     ):
         assert response.status_code == 403
         assert response.json() == {"detail": "Polar Data Lab is not enabled."}
 
 
 @pytest.mark.parametrize("value", ["false", "0", "no", "", "maybe"])
-def test_only_clear_values_enable_the_data_lab(monkeypatch, value) -> None:
+def test_only_clear_values_enable_the_data_lab(monkeypatch, client_as, value) -> None:
     monkeypatch.setenv("DATA_LAB_ENABLED", value)
 
     assert config.is_enabled() is False
-    assert _create().status_code == 403
+    response = client_as("researcher").post(SESSIONS_URL, json={"dataset_id": PREVIEW_ID})
+    assert response.status_code == 403
 
 
 def test_session_is_created_for_a_supported_dataset(lab) -> None:

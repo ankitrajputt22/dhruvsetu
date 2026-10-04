@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AccountMenu, AccountMenuItems } from "@/components/auth";
 import { Icon, LogoMark } from "@/components/icons";
 import { LiteModeToggle } from "@/components/lite-mode";
 
@@ -26,9 +27,9 @@ export function SiteHeader() {
           DhruvSetu
         </Link>
 
-        <div className="ml-auto hidden items-center gap-3 lg:flex xl:gap-5">
+        <div className="ml-auto hidden items-center gap-4 xl:flex">
           <nav aria-label="Main navigation" className="h-full">
-            <ul className="flex h-full items-center gap-3 whitespace-nowrap text-sm text-slate-200 xl:gap-5">
+            <ul className="flex h-full items-center gap-4 whitespace-nowrap text-sm text-slate-200">
               {navigation.map((item) => (
                 <li key={item.href}>
                   <Link className="py-2 transition hover:text-white" href={item.href}>
@@ -47,11 +48,15 @@ export function SiteHeader() {
           </Link>
         </div>
 
-        <div className="ml-auto lg:ml-0">
+        <div className="ml-auto xl:ml-0">
           <LiteModeToggle />
         </div>
 
-        <details className="group relative lg:hidden">
+        <div className="hidden xl:block">
+          <AccountMenu />
+        </div>
+
+        <details className="group relative xl:hidden">
           <summary
             aria-label="Open navigation menu"
             className="flex cursor-pointer list-none items-center gap-2 rounded-md border border-white/30 px-3 py-2 text-sm font-medium marker:content-none"
@@ -84,6 +89,7 @@ export function SiteHeader() {
                     <Icon name="search" className="h-4 w-4" /> Search
                   </Link>
                 </li>
+                <AccountMenuItems />
               </ul>
             </nav>
           </div>
