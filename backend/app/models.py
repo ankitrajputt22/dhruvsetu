@@ -33,6 +33,7 @@ VERIFICATION_STATUSES = ("uploaded", "reviewed", "verified")
 # The only application roles. Student, Teacher, Journalist and Public are
 # outreach content modes, not roles.
 USER_ROLES = ("user", "researcher", "admin")
+RESEARCHER_REQUEST_STATUSES = ("pending", "approved", "rejected")
 
 
 def new_uuid() -> str:
@@ -387,7 +388,12 @@ class Dataset(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Base)
     source_url: Mapped[str | None] = mapped_column(String(2048))
     # Name of the data file inside the dataset store. Empty for metadata-only records.
     file_name: Mapped[str | None] = mapped_column(String(255))
+    # The account that submitted the record. Empty for records added by the project.
+    submitted_by_user_id: Mapped[str | None] = mapped_column(
+        CHAR(36), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
+    submitted_by: Mapped[User | None] = relationship()
     expeditions: Mapped[list[Expedition]] = relationship(
         secondary=dataset_expeditions, back_populates="datasets"
     )
@@ -429,7 +435,12 @@ class Document(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Base
     expedition_id: Mapped[str | None] = mapped_column(
         CHAR(36), ForeignKey("expeditions.id", ondelete="SET NULL"), index=True
     )
+    # The account that submitted the record. Empty for records added by the project.
+    submitted_by_user_id: Mapped[str | None] = mapped_column(
+        CHAR(36), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
 
+    submitted_by: Mapped[User | None] = relationship()
     publication: Mapped[Publication | None] = relationship(back_populates="documents")
     report: Mapped[Report | None] = relationship(back_populates="documents")
     expedition: Mapped[Expedition | None] = relationship(back_populates="documents")
@@ -493,10 +504,19 @@ class User(UUIDMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    researcher_request: Mapped[ResearcherAccessRequest | None] = relationship(
+    # Every request the person has made, newest first. A new request can only
+    # be made once the one before it is decided, so a pending request is
+    # always the newest, also when two were saved within the same second.
+    researcher_requests: Mapped[list[ResearcherAccessRequest]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         passive_deletes=True,
+        foreign_keys="ResearcherAccessRequest.user_id",
+        order_by=lambda: (
+            ResearcherAccessRequest.created_at.desc(),
+            ResearcherAccessRequest.decided_at.is_(None).desc(),
+            ResearcherAccessRequest.decided_at.desc(),
+        ),
     )
 
 
@@ -520,19 +540,26 @@ class UserSession(UUIDMixin, Base):
 
 
 class ResearcherAccessRequest(UUIDMixin, Base):
-    """What a person wrote when asking for researcher access at signup.
+    """One request for researcher access, and what an admin decided.
 
-    Saving a request gives no permissions. The account stays a normal user
-    until an admin changes its role.
+    A request gives no permissions by itself. The account becomes a researcher
+    only when an admin approves the request. A person can have several
+    requests over time, but only one that is still pending.
     """
 
     __tablename__ = "researcher_access_requests"
+    __table_args__ = (
+        CheckConstraint(
+            "status in ('pending', 'approved', 'rejected')",
+            name="ck_researcher_access_requests_status",
+        ),
+    )
 
     user_id: Mapped[str] = mapped_column(
         CHAR(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True,
+        index=True,
     )
     institution: Mapped[str] = mapped_column(String(200), nullable=False)
     research_area: Mapped[str] = mapped_column(String(120), nullable=False)
@@ -542,8 +569,20 @@ class ResearcherAccessRequest(UUIDMixin, Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="pending", server_default="pending", index=True
+    )
+    # Who decided, when, and the note they wrote for the applicant.
+    decided_by_user_id: Mapped[str | None] = mapped_column(
+        CHAR(36), ForeignKey("users.id", ondelete="SET NULL"), index=True
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime)
+    decision_note: Mapped[str | None] = mapped_column(String(500))
 
-    user: Mapped[User] = relationship(back_populates="researcher_request")
+    user: Mapped[User] = relationship(
+        back_populates="researcher_requests", foreign_keys=[user_id]
+    )
+    decided_by: Mapped[User | None] = relationship(foreign_keys=[decided_by_user_id])
 
 
 class VerificationChange(UUIDMixin, Base):

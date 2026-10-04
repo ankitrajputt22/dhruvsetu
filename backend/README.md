@@ -50,14 +50,17 @@ Check the live database connection at
 
 The repository is open. Nobody has to log in to read expeditions, scientists,
 publications, datasets, documents, the Polar Map, search, citations, Outreach
-Studio or the assistant. Login is only needed for Polar Data Lab and the admin
-area.
+Studio or the assistant. Login is only needed for Polar Data Lab, the Research
+Workspace and the admin area.
 
 | Role | What it adds |
 |---|---|
 | `user` | Nothing beyond what a visitor can do. Every new account gets this role. |
-| `researcher` | Polar Data Lab. |
-| `admin` | Polar Data Lab, the admin area, verification status changes, and giving or removing the researcher role. |
+| `researcher` | Polar Data Lab, and the Research Workspace for submitting documents and datasets. |
+| `admin` | Everything a researcher can do, the admin area, verification status changes, deciding researcher requests, and giving or removing the researcher role. |
+
+A person becomes a researcher when an admin approves their request. See
+[Researcher access and submissions](#researcher-access-and-submissions).
 
 Student, Teacher, Journalist and Public are audience settings in Outreach
 Studio. They are not login roles and give no permissions.
@@ -78,7 +81,9 @@ Studio. They are not login roles and give no permissions.
 - A request that changes something (`POST`, `PATCH`, `DELETE`) must come from
   an origin listed in `FRONTEND_ORIGINS`. This check, the `SameSite` cookie and
   JSON-only request bodies together protect against cross-site request
-  forgery. CORS is not relied on for this.
+  forgery. CORS is not relied on for this. The two upload endpoints of the
+  Research Workspace take a form with a file instead of JSON; they rely on the
+  origin check and the `SameSite` cookie.
 - After 5 failed logins for one email address, more attempts for it are
   refused for 5 minutes.
 - The frontend passes browser requests for `/api/...` on to this API, so the
@@ -93,7 +98,9 @@ Studio. They are not login roles and give no permissions.
 | `POST /api/auth/logout` | Anyone | Ends the session and clears the cookie. |
 | `GET /api/auth/me` | Signed in | Returns only the id, email, display name and role. |
 | `POST` and `DELETE` under `/api/data-lab/sessions` | `researcher`, `admin` | Also needs `DATA_LAB_ENABLED=true`. |
-| Everything under `/api/admin` | `admin` | Verification and accounts. |
+| `GET` and `POST /api/researcher-access` | Signed in | The account's own researcher access and requests. |
+| Everything under `/api/researcher` | `researcher`, `admin` | The Research Workspace. |
+| Everything under `/api/admin` | `admin` | Verification, researcher requests and accounts. |
 
 A request without a valid login gets `401`. A request from an account without
 the needed role gets `403`. The frontend hides links a role cannot use, but the
@@ -134,16 +141,13 @@ made here gets the `user` role, whichever type is chosen, and choosing
 `researcher` unlocks nothing: no Polar Data Lab and no admin area. `admin` is
 not an account type and is rejected, as is any `role` field.
 
-A researcher request is saved in the `researcher_access_requests` table (one
-row for the account: institution, research area, designation, reason, profile
+A researcher request is saved in the `researcher_access_requests` table as a
+`pending` request (institution, research area, designation, reason, profile
 URL and the time). The profile URL must start with `http://` or `https://`,
 and `acknowledged` must be `true`. The password confirmation on the form is
-checked in the browser and is never sent.
-
-What is not built yet: there is no page or endpoint for an admin to see,
-approve or reject these requests, and the table has no status. For now an
-admin gives the researcher role by hand at `/admin/users`. The request and
-approval workflow is the next phase.
+checked in the browser and is never sent. What happens to the request next is
+described under
+[Researcher access and submissions](#researcher-access-and-submissions).
 
 ### Create local accounts
 
@@ -190,8 +194,9 @@ mistake. An admin can give or remove the researcher role at `/admin/users`
 - There is no login through another service (OAuth or single sign-on).
 - The failed-login limit is kept in the memory of one API process. It is reset
   when the API restarts and is not shared between several workers.
-- Researcher requests made at signup are saved but cannot be reviewed yet (see
-  "Signing up").
+- Role changes made by hand on the Users page are not kept in a history. Only
+  request decisions and verification changes are.
+- Researchers cannot edit or delete what they submitted.
 - There is no page to disable or delete an account. The `is_active` column
   exists, and an inactive account cannot log in, but it is set in the database.
 - A changing request that has neither an `Origin` nor a `Referer` header is
@@ -202,6 +207,153 @@ mistake. An admin can give or remove the researcher role at `/admin/users`
 Before any public deployment: serve the site over HTTPS, set
 `AUTH_COOKIE_SECURE=true`, set `FRONTEND_ORIGINS` to the real address, add a
 password reset, and use a shared rate limit.
+
+## Researcher access and submissions
+
+Two things are checked by an admin, in two separate steps:
+
+1. The person: a request for researcher access is approved or rejected.
+2. The work: a document or dataset a researcher submits is reviewed and
+   verified with the usual verification workflow.
+
+### Asking for researcher access
+
+A person asks for researcher access when signing up (see "Signing up"), or
+later from the account at `/account/researcher-access`. Both use the same
+questions: institution, research area, designation (optional), reason and
+profile URL (optional).
+
+| Endpoint | Who | Notes |
+|---|---|---|
+| `GET /api/researcher-access` | Signed in | The account's role, where it stands, and its own requests. |
+| `POST /api/researcher-access` | Signed in | Sends a new request. |
+
+A request has one of three statuses:
+
+- `pending` - waiting for an admin. It gives no permissions at all.
+- `approved` - an admin approved it and the account became a researcher.
+- `rejected` - an admin said no. The account stays a normal user.
+
+The request can only carry the answers to the questions. A `role`, `status`,
+`approved` or any decision field in the request is rejected with `422`. Only
+an admin sets those.
+
+Rules for asking again:
+
+- Only one request can be pending for an account. A second one gets `409`.
+- An account that is already a researcher or an admin needs no request (`409`).
+- After a rejection the person can send a new request. It is saved as a new
+  row, so the earlier request and its decision stay on record.
+
+What the person sees is one of: "No researcher access request", "Pending
+Review", "Approved", "Rejected", or "Removed" (an admin took the role away
+later). A waiting request is never shown as researcher access. The admin's
+note is shown to the applicant; the admin's name is not.
+
+### Deciding a request (admin)
+
+The admin area has a "Researcher requests" page, with Pending shown first.
+
+| Endpoint | Notes |
+|---|---|
+| `GET /api/admin/researcher-requests?status=pending` | `pending` (default), `approved`, `rejected` or `all`. |
+| `GET /api/admin/researcher-requests/{id}` | The full request, the applicant's email and role, and the person's other requests. |
+| `POST /api/admin/researcher-requests/{id}/approve` | Optional `{"note": "..."}`. |
+| `POST /api/admin/researcher-requests/{id}/reject` | Optional `{"note": "..."}`. |
+
+Approving a request does three things in one database transaction: the request
+becomes `approved`, the account's role becomes `researcher`, and every session
+of that account is ended. The person signs in again and then has researcher
+access. If any part fails, nothing is saved.
+
+Rejecting a request sets it to `rejected` and leaves the account as it is. The
+account is not disabled or deleted.
+
+Every decision stores who decided, when, and the note. A request is decided
+once: deciding it again returns `409`. An admin cannot decide their own request
+(`403`). Other accounts get `403`, and an unknown request gets `404`.
+
+The Users page can still switch an account between User and Researcher by
+hand. Giving the role there also marks a pending request of that account as
+approved, by that admin, with the note "Researcher role given on the Users
+page.", so an account is never a researcher while its request says pending.
+Removing the role does not change any request and does not touch what the
+person submitted.
+
+### Research Workspace
+
+Researchers and admins have a Research Workspace at `/researcher`. It shows
+their own submissions and lets them submit a document or a dataset.
+
+| Endpoint | Notes |
+|---|---|
+| `GET /api/researcher/submissions` | The documents and datasets this account submitted. |
+| `POST /api/researcher/documents` | A form upload: `title`, `document_type`, `file`, and optional `source_url`, `publication_date`, `expedition_id`. |
+| `POST /api/researcher/datasets` | A form upload: `title`, `file`, and optional `description`, `source_url`, `expedition_id`, `topic_id`. |
+
+All three need the `researcher` or `admin` role, checked before anything is
+read from the request. A normal user gets `403`.
+
+| | Documents | Datasets |
+|---|---|---|
+| File types | PDF, TXT | CSV, JSON |
+| Size limit | 20 MB | 5 MB |
+| Checked on upload | Readable text, a real PDF header, not a copy of a stored document | Opens as a table with column names and at least one row |
+| What happens | Ingested like any other document: stored and split into chunks | Stored and shown in the Dataset Explorer |
+
+These are the limits the document ingestion and the dataset preview already
+had. Other file types are refused, including the larger dataset formats that
+an admin can still attach with `python -m app.datasets.attach`.
+
+What the server decides, whatever the upload says:
+
+- The verification status is always `uploaded`. A `verification_status`
+  field in the upload is rejected.
+- The record is never marked as demo data.
+- The submitter is the signed-in account (`submitted_by_user_id` on documents
+  and datasets). It cannot be chosen.
+- The stored file gets a name made by the server (the file hash or the record
+  ID). The uploaded name is only kept as a label, without any folder part, so
+  a name such as `../../x.txt` cannot leave the store. Uploaded files are never
+  run.
+
+Researchers cannot edit or delete a submission, and cannot mark it Reviewed or
+Verified. Editing is left for later work.
+
+### Verifying a submission
+
+A submission enters the same admin verification queue as every other record
+and follows the same steps: Uploaded, then Reviewed, then Verified. Nothing
+about that workflow is different for submissions.
+
+The admin review page also shows who submitted the record (name and email),
+the submitter's role now, and the date. The public page of a document or a
+dataset shows "Submitted by" with the display name only. The email and the
+account ID are never public.
+
+The trail of a submission is made of stored facts: the submitter on the
+record, and each status change with the admin who made it in
+`verification_changes`. Removing a person's researcher role, or verifying the
+record, does not change who submitted it.
+
+### Search and the assistant
+
+A submitted dataset can be found by keyword search at once. Semantic search
+and the assistant use the local index, which is rebuilt by hand as before:
+
+```bash
+python -m app.search.build_index
+```
+
+Until that is run, a submitted document is not used as evidence by the
+assistant. After it, the document's chunks are retrieved like any others, with
+their real verification status and demo flag on the source card.
+
+### Tests
+
+`pytest tests/test_researcher_requests.py tests/test_researcher_submissions.py`
+covers the request rules, the decisions, session ending, the upload checks and
+the verification of a submission.
 
 ## Demo data
 

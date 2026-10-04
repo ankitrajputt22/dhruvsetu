@@ -128,6 +128,8 @@ export type DatasetFileInfo = {
 
 export type DatasetDetail = DatasetListItem & {
   file: DatasetFileInfo | null;
+  // Display name of the researcher who submitted it, when there is one.
+  submitted_by: string | null;
 };
 
 export type FilterOption = {
@@ -244,6 +246,8 @@ export type DocumentDetail = Document & {
   created_at: string;
   first_page: number | null;
   last_page: number | null;
+  // Display name of the researcher who submitted it, when there is one.
+  submitted_by: string | null;
 };
 
 export type AssistantSource = SourceProvenance & {
@@ -407,3 +411,77 @@ export type AdminUser = {
   is_active: boolean;
   created_at: string;
 };
+
+export type ResearcherRequestStatus = "pending" | "approved" | "rejected";
+
+// Where an account stands. Only the role gives researcher access.
+export type ResearcherAccessStatus =
+  | "none"
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "removed";
+
+export type ResearcherRequestOwn = {
+  id: string;
+  status: ResearcherRequestStatus;
+  institution: string;
+  research_area: string;
+  designation: string | null;
+  reason: string;
+  profile_url: string | null;
+  created_at: string;
+  decided_at: string | null;
+  decision_note: string | null;
+};
+
+export type ResearcherAccess = {
+  role: "user" | "researcher" | "admin";
+  access_status: ResearcherAccessStatus;
+  can_request: boolean;
+  requests: ResearcherRequestOwn[];
+};
+
+export type AdminResearcherRequest = {
+  id: string;
+  status: ResearcherRequestStatus;
+  applicant: {
+    id: string;
+    email: string;
+    display_name: string | null;
+    role: "user" | "researcher" | "admin";
+  };
+  institution: string;
+  research_area: string;
+  designation: string | null;
+  created_at: string;
+};
+
+export type AdminResearcherDecisionRecord = {
+  id: string;
+  status: ResearcherRequestStatus;
+  created_at: string;
+  decided_at: string | null;
+  decided_by: string | null;
+  decision_note: string | null;
+};
+
+export type AdminResearcherRequestDetail = AdminResearcherRequest & {
+  reason: string;
+  profile_url: string | null;
+  decided_at: string | null;
+  decided_by: string | null;
+  decision_note: string | null;
+  other_requests: AdminResearcherDecisionRecord[];
+};
+
+export type SubmissionItem = {
+  type: "document" | "dataset";
+  id: string;
+  title: string;
+  file_type: string | null;
+  verification_status: string;
+  created_at: string;
+  href: string;
+};
+

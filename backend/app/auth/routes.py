@@ -82,14 +82,16 @@ def register(
         role="user",
     )
     if payload.researcher is not None:
-        # The request is only saved. It changes nothing about what the
-        # account can do.
-        user.researcher_request = ResearcherAccessRequest(
-            institution=payload.researcher.institution,
-            research_area=payload.researcher.research_area,
-            designation=payload.researcher.designation,
-            reason=payload.researcher.reason,
-            profile_url=payload.researcher.profile_url,
+        # The request waits for an admin. Until it is approved it changes
+        # nothing about what the account can do.
+        user.researcher_requests.append(
+            ResearcherAccessRequest(
+                institution=payload.researcher.institution,
+                research_area=payload.researcher.research_area,
+                designation=payload.researcher.designation,
+                reason=payload.researcher.reason,
+                profile_url=payload.researcher.profile_url,
+            )
         )
     db.add(user)
     try:

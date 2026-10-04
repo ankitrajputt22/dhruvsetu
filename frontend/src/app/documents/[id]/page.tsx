@@ -88,6 +88,9 @@ export default async function DocumentDetailPage({
                   label="Added to DhruvSetu"
                   value={formatDate(document.created_at.slice(0, 10))}
                 />
+                {document.submitted_by && (
+                  <Detail icon="scientist" label="Submitted by" value={document.submitted_by} plain />
+                )}
               </dl>
             </section>
 

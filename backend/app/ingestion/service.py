@@ -49,6 +49,7 @@ def ingest_document(
     publication_id: str | None = None,
     report_id: str | None = None,
     expedition_id: str | None = None,
+    submitted_by_user_id: str | None = None,
     document_store: Path = DOCUMENT_STORE,
 ) -> IngestionResult:
     path = file_path.expanduser().resolve()
@@ -104,6 +105,7 @@ def ingest_document(
         publication_id=publication_id,
         report_id=report_id,
         expedition_id=expedition_id,
+        submitted_by_user_id=submitted_by_user_id,
         chunks=[
             DocumentChunk(
                 chunk_number=chunk.chunk_number,

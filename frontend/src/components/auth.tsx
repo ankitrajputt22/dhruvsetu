@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { createContext, useContext, useRef, useState } from "react";
 
 import { postApi } from "@/lib/api";
-import { type AuthUser, canUseDataLab, isAdmin, roleLabels, userName } from "@/lib/auth";
+import {
+  type AuthUser,
+  canUseDataLab,
+  canUseWorkspace,
+  isAdmin,
+  roleLabels,
+  userName,
+} from "@/lib/auth";
 
 const AuthContext = createContext<AuthUser | null>(null);
 
@@ -45,6 +52,9 @@ function useLogout(): { logout: () => void; busy: boolean } {
 function roleLinks(user: AuthUser): { href: string; label: string }[] {
   return [
     ...(isAdmin(user) ? [{ href: "/admin", label: "Admin" }] : []),
+    ...(canUseWorkspace(user)
+      ? [{ href: "/researcher", label: "Research Workspace" }]
+      : [{ href: "/account/researcher-access", label: "Researcher Access" }]),
     ...(canUseDataLab(user) ? [{ href: "/data-lab", label: "Polar Data Lab" }] : []),
   ];
 }

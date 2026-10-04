@@ -4,8 +4,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import {
+  describedBy,
+  FieldLabel,
+  FieldMessage,
+  FormError,
+  inputClass,
+  SubmitButton,
+  TextField,
+} from "@/components/form-fields";
+import { ResearcherFields } from "@/components/researcher-fields";
 import { type ApiResult, postApi } from "@/lib/api";
-import { type AuthUser, rememberSignup } from "@/lib/auth";
+import type { AuthUser } from "@/lib/auth";
 import {
   type AccountType,
   emptyRegistration,
@@ -13,11 +23,9 @@ import {
   LOGIN_FIELDS,
   type LoginValues,
   MIN_PASSWORD_LENGTH,
-  OTHER_RESEARCH_AREA,
   REGISTRATION_FIELDS,
   type RegistrationValues,
   registrationPayload,
-  RESEARCH_AREAS,
   validateLogin,
   validateRegistration,
 } from "@/lib/auth-validation";
@@ -37,91 +45,6 @@ const accountTypes: { value: AccountType; title: string; description: string }[]
       "Request researcher access to contribute and work with polar research resources.",
   },
 ];
-
-function inputClass(error: string | undefined): string {
-  return `w-full rounded-lg border bg-white px-3.5 py-2.5 text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-sky-700 focus:ring-2 focus:ring-sky-200 ${
-    error ? "border-red-600" : "border-slate-300"
-  }`;
-}
-
-// Links a field to its hint or its error, so both are read out with it.
-function describedBy(id: string, hint: string | undefined, error: string | undefined) {
-  return {
-    "aria-invalid": error ? true : undefined,
-    "aria-describedby": error ? `${id}-error` : hint ? `${id}-hint` : undefined,
-  };
-}
-
-function FieldMessage({ id, hint, error }: { id: string; hint?: string; error?: string }) {
-  if (error) {
-    return (
-      <p className="mt-1.5 text-sm text-red-700" id={`${id}-error`}>
-        {error}
-      </p>
-    );
-  }
-  return hint ? (
-    <p className="mt-1.5 text-xs leading-5 text-slate-500" id={`${id}-hint`}>
-      {hint}
-    </p>
-  ) : null;
-}
-
-function FieldLabel({ id, label, optional }: { id: string; label: string; optional?: boolean }) {
-  return (
-    <label className="block text-sm font-medium text-slate-800" htmlFor={id}>
-      {label}
-      {optional && <span className="font-normal text-slate-500"> (optional)</span>}
-    </label>
-  );
-}
-
-type TextFieldProps = {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: "text" | "email" | "url";
-  autoComplete?: string;
-  maxLength?: number;
-  optional?: boolean;
-  hint?: string;
-  error?: string;
-  placeholder?: string;
-};
-
-function TextField({
-  id,
-  label,
-  value,
-  onChange,
-  type = "text",
-  autoComplete,
-  maxLength,
-  optional,
-  hint,
-  error,
-  placeholder,
-}: TextFieldProps) {
-  return (
-    <div>
-      <FieldLabel id={id} label={label} optional={optional} />
-      <input
-        autoComplete={autoComplete}
-        className={`mt-1.5 ${inputClass(error)}`}
-        id={id}
-        maxLength={maxLength}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        required={!optional}
-        type={type}
-        value={value}
-        {...describedBy(id, hint, error)}
-      />
-      <FieldMessage error={error} hint={hint} id={id} />
-    </div>
-  );
-}
 
 function PasswordField({
   id,
@@ -171,38 +94,6 @@ function PasswordField({
       </div>
       <FieldMessage error={error} hint={hint} id={id} />
     </div>
-  );
-}
-
-function FormError({ message }: { message: string | null }) {
-  if (message === null) {
-    return null;
-  }
-  return (
-    <p
-      className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900"
-      role="alert"
-    >
-      {message}
-    </p>
-  );
-}
-
-function SubmitButton({ busy, label, busyLabel }: { busy: boolean; label: string; busyLabel: string }) {
-  return (
-    <>
-      <button
-        aria-busy={busy}
-        className="w-full rounded-lg bg-sky-800 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-900 disabled:cursor-not-allowed disabled:opacity-60"
-        disabled={busy}
-        type="submit"
-      >
-        {busy ? busyLabel : label}
-      </button>
-      <p className="sr-only" role="status">
-        {busy ? busyLabel : ""}
-      </p>
-    </>
   );
 }
 
@@ -340,15 +231,19 @@ export function RegisterForm({ next }: { next: string }) {
   const sending = useRef(false);
   const researcher = values.accountType === "researcher";
 
-  function update<Field extends keyof RegistrationValues>(
-    field: Field,
-    value: RegistrationValues[Field],
-  ) {
-    const changed = { ...values, [field]: value };
+  function change(part: Partial<RegistrationValues>) {
+    const changed = { ...values, ...part };
     setValues(changed);
     if (attempted) {
       setErrors(validateRegistration(changed));
     }
+  }
+
+  function update<Field extends keyof RegistrationValues>(
+    field: Field,
+    value: RegistrationValues[Field],
+  ) {
+    change({ [field]: value } as Partial<RegistrationValues>);
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -375,7 +270,6 @@ export function RegisterForm({ next }: { next: string }) {
       setFormError(registrationFailure(result));
       return;
     }
-    rememberSignup(result.data.id, values.accountType);
     router.push(`/welcome${nextQuery(next)}`);
     router.refresh();
   }
@@ -485,112 +379,14 @@ export function RegisterForm({ next }: { next: string }) {
             </p>
           </div>
 
-          <TextField
-            autoComplete="organization"
-            error={errors.institution}
-            id="register-institution"
-            label="Institution / Organisation"
-            maxLength={200}
-            onChange={(value) => update("institution", value)}
-            value={values.institution}
+          <ResearcherFields
+            errors={errors}
+            idPrefix="register"
+            onChange={(field, value) =>
+              change({ [field]: value } as Partial<RegistrationValues>)
+            }
+            values={values}
           />
-
-          <div>
-            <FieldLabel id="register-researchArea" label="Research Area" />
-            <select
-              className={`mt-1.5 ${inputClass(errors.researchArea)}`}
-              id="register-researchArea"
-              onChange={(event) => update("researchArea", event.target.value)}
-              required
-              value={values.researchArea}
-              {...describedBy("register-researchArea", undefined, errors.researchArea)}
-            >
-              <option value="">Select a research area</option>
-              {RESEARCH_AREAS.map((area) => (
-                <option key={area} value={area}>
-                  {area}
-                </option>
-              ))}
-            </select>
-            <FieldMessage error={errors.researchArea} id="register-researchArea" />
-          </div>
-
-          {values.researchArea === OTHER_RESEARCH_AREA && (
-            <TextField
-              error={errors.otherResearchArea}
-              id="register-otherResearchArea"
-              label="Please specify"
-              maxLength={120}
-              onChange={(value) => update("otherResearchArea", value)}
-              value={values.otherResearchArea}
-            />
-          )}
-
-          <TextField
-            autoComplete="organization-title"
-            hint="For example researcher, student researcher, scientist or faculty."
-            id="register-designation"
-            label="Designation"
-            maxLength={120}
-            onChange={(value) => update("designation", value)}
-            optional
-            value={values.designation}
-          />
-
-          <div>
-            <FieldLabel id="register-reason" label="Reason for Researcher Access" />
-            <textarea
-              className={`mt-1.5 min-h-24 ${inputClass(errors.reason)}`}
-              id="register-reason"
-              maxLength={1000}
-              onChange={(event) => update("reason", event.target.value)}
-              required
-              value={values.reason}
-              {...describedBy(
-                "register-reason",
-                "Briefly describe why you need researcher access to DhruvSetu.",
-                errors.reason,
-              )}
-            />
-            <FieldMessage
-              error={errors.reason}
-              hint="Briefly describe why you need researcher access to DhruvSetu."
-              id="register-reason"
-            />
-          </div>
-
-          <TextField
-            autoComplete="url"
-            error={errors.profileUrl}
-            hint="A page about you at your institution, or a professional profile."
-            id="register-profileUrl"
-            label="Institutional / Professional Profile URL"
-            maxLength={500}
-            onChange={(value) => update("profileUrl", value)}
-            optional
-            placeholder="https://"
-            type="url"
-            value={values.profileUrl}
-          />
-
-          <div>
-            <label className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-slate-700">
-              <input
-                checked={values.acknowledged}
-                className="mt-1 h-4 w-4 shrink-0 accent-sky-800"
-                id="register-acknowledged"
-                onChange={(event) => update("acknowledged", event.target.checked)}
-                required
-                type="checkbox"
-                {...describedBy("register-acknowledged", undefined, errors.acknowledged)}
-              />
-              <span>
-                I understand that researcher access requires administrator approval and
-                that submitted research may require verification.
-              </span>
-            </label>
-            <FieldMessage error={errors.acknowledged} id="register-acknowledged" />
-          </div>
         </section>
       )}
 

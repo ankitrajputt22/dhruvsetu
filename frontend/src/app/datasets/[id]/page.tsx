@@ -94,6 +94,9 @@ export default async function DatasetDetailPage({
                   label="Added to DhruvSetu"
                   value={formatDate(dataset.created_at.slice(0, 10))}
                 />
+                {dataset.submitted_by && (
+                  <Detail icon="scientist" label="Submitted by" value={dataset.submitted_by} />
+                )}
                 {file && <Detail icon="document" label="File name" value={file.file_name} />}
                 {file && (
                   <Detail

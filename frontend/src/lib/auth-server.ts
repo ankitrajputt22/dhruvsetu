@@ -36,6 +36,26 @@ export async function getAdminOrRedirect(path: string): Promise<AuthUser | null>
   return user.role === "admin" ? user : null;
 }
 
+// For researcher pages. Signed-out visitors are sent to the login page. A
+// signed-in account without the researcher or admin role gets null. The API
+// checks the role again on every researcher request.
+export async function getResearcherOrRedirect(path: string): Promise<AuthUser | null> {
+  const user = await getCurrentUser();
+  if (user === null) {
+    redirect(`/login?next=${encodeURIComponent(path)}`);
+  }
+  return user.role === "researcher" || user.role === "admin" ? user : null;
+}
+
+// For pages that need any signed-in account.
+export async function getUserOrRedirect(path: string): Promise<AuthUser> {
+  const user = await getCurrentUser();
+  if (user === null) {
+    redirect(`/login?next=${encodeURIComponent(path)}`);
+  }
+  return user;
+}
+
 // A server-side read on behalf of the signed-in user.
 export async function getApiAsUser<T>(path: string): Promise<ApiResult<T>> {
   try {

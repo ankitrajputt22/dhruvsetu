@@ -296,7 +296,9 @@ def _researcher_signup(email: str, **changes) -> dict:
 def _saved_request(email: str) -> ResearcherAccessRequest | None:
     with SessionLocal() as session:
         return session.scalar(
-            select(ResearcherAccessRequest).join(User).where(User.email == email)
+            select(ResearcherAccessRequest)
+            .join(User, ResearcherAccessRequest.user_id == User.id)
+            .where(User.email == email)
         )
 
 

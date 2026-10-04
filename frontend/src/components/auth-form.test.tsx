@@ -453,8 +453,10 @@ describe("Create Account form", () => {
         acknowledged: true,
       },
     });
-    // The welcome page is told what was asked for, for this account only.
-    expect(window.sessionStorage.getItem("dhruvsetu.signup")).toBe("new-id:researcher");
+    // Nothing about the request is kept in the browser. The welcome page reads
+    // the saved request from the API.
+    expect(window.sessionStorage.length).toBe(0);
+    expect(window.localStorage.length).toBe(0);
   });
 
   it("leaves the researcher answers out after switching back to General User", async () => {

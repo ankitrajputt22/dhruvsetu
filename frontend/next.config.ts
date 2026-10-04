@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   experimental: {
     // Data Lab cells and assistant answers can take longer than the default.
     proxyTimeout: 120_000,
+    // Request bodies are passed on whole only up to this size. It has to cover
+    // the largest upload the API accepts: a 20 MB document and its form fields.
+    proxyClientMaxBodySize: "21mb",
   },
 };
 

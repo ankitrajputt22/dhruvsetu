@@ -29,12 +29,8 @@ export type LoginValues = {
   password: string;
 };
 
-export type RegistrationValues = {
-  fullName: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  accountType: AccountType;
+// The answers given when asking for researcher access.
+export type ResearcherValues = {
   institution: string;
   researchArea: string;
   otherResearchArea: string;
@@ -44,14 +40,17 @@ export type RegistrationValues = {
   acknowledged: boolean;
 };
 
+export type RegistrationValues = ResearcherValues & {
+  fullName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  accountType: AccountType;
+};
+
 export type FieldErrors<T> = Partial<Record<keyof T, string>>;
 
-export const emptyRegistration: RegistrationValues = {
-  fullName: "",
-  email: "",
-  password: "",
-  confirmPassword: "",
-  accountType: "user",
+export const emptyResearcher: ResearcherValues = {
   institution: "",
   researchArea: "",
   otherResearchArea: "",
@@ -61,20 +60,33 @@ export const emptyRegistration: RegistrationValues = {
   acknowledged: false,
 };
 
+export const emptyRegistration: RegistrationValues = {
+  fullName: "",
+  email: "",
+  password: "",
+  confirmPassword: "",
+  accountType: "user",
+  ...emptyResearcher,
+};
+
 // Fields in the order they appear, so the first one with a problem gets focus.
 export const LOGIN_FIELDS = ["email", "password"] as const;
 
-export const REGISTRATION_FIELDS = [
-  "fullName",
-  "email",
-  "password",
-  "confirmPassword",
+export const RESEARCHER_FIELDS = [
   "institution",
   "researchArea",
   "otherResearchArea",
   "reason",
   "profileUrl",
   "acknowledged",
+] as const;
+
+export const REGISTRATION_FIELDS = [
+  "fullName",
+  "email",
+  "password",
+  "confirmPassword",
+  ...RESEARCHER_FIELDS,
 ] as const;
 
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -131,41 +143,56 @@ function confirmError(values: RegistrationValues): string | undefined {
   return values.confirmPassword === values.password ? undefined : "Passwords do not match.";
 }
 
+export function validateResearcher(values: ResearcherValues): FieldErrors<ResearcherValues> {
+  const profileUrl = values.profileUrl.trim();
+  return withoutEmpty<ResearcherValues>({
+    institution:
+      values.institution.trim().length >= 2
+        ? undefined
+        : "Enter your institution or organisation.",
+    researchArea: values.researchArea ? undefined : "Select your research area.",
+    otherResearchArea:
+      values.researchArea === OTHER_RESEARCH_AREA && values.otherResearchArea.trim().length < 2
+        ? "Please specify your research area."
+        : undefined,
+    reason: values.reason.trim() ? undefined : "Tell us why you need researcher access.",
+    profileUrl:
+      profileUrl && !isHttpUrl(profileUrl)
+        ? "Enter a full web address that starts with http:// or https://."
+        : undefined,
+    acknowledged: values.acknowledged ? undefined : "Please confirm that you understand this.",
+  });
+}
+
 export function validateRegistration(
   values: RegistrationValues,
 ): FieldErrors<RegistrationValues> {
-  const errors: FieldErrors<RegistrationValues> = {
+  const errors = withoutEmpty<RegistrationValues>({
     fullName: values.fullName.trim() ? undefined : "Enter your full name.",
     email: emailError(values.email),
     password: passwordError(values.password),
     confirmPassword: confirmError(values),
-  };
-
+  });
   // The researcher questions are only checked when they are shown.
-  if (values.accountType === "researcher") {
-    const profileUrl = values.profileUrl.trim();
-    Object.assign(errors, {
-      institution:
-        values.institution.trim().length >= 2
-          ? undefined
-          : "Enter your institution or organisation.",
-      researchArea: values.researchArea ? undefined : "Select your research area.",
-      otherResearchArea:
-        values.researchArea === OTHER_RESEARCH_AREA &&
-        values.otherResearchArea.trim().length < 2
-          ? "Please specify your research area."
-          : undefined,
-      reason: values.reason.trim() ? undefined : "Tell us why you need researcher access.",
-      profileUrl:
-        profileUrl && !isHttpUrl(profileUrl)
-          ? "Enter a full web address that starts with http:// or https://."
-          : undefined,
-      acknowledged: values.acknowledged
-        ? undefined
-        : "Please confirm that you understand this.",
-    });
-  }
-  return withoutEmpty<RegistrationValues>(errors);
+  return values.accountType === "researcher"
+    ? { ...errors, ...validateResearcher(values) }
+    : errors;
+}
+
+// The researcher answers as the API takes them. A decision or a status can
+// never be part of it: only an admin sets those.
+export function researcherPayload(values: ResearcherValues) {
+  return {
+    institution: values.institution.trim(),
+    research_area:
+      values.researchArea === OTHER_RESEARCH_AREA
+        ? values.otherResearchArea.trim()
+        : values.researchArea,
+    designation: values.designation.trim() || null,
+    reason: values.reason.trim(),
+    profile_url: values.profileUrl.trim() || null,
+    acknowledged: true,
+  };
 }
 
 // What is sent to the API. The password confirmation is never sent, and there
@@ -180,18 +207,5 @@ export function registrationPayload(values: RegistrationValues) {
   if (values.accountType !== "researcher") {
     return account;
   }
-  return {
-    ...account,
-    researcher: {
-      institution: values.institution.trim(),
-      research_area:
-        values.researchArea === OTHER_RESEARCH_AREA
-          ? values.otherResearchArea.trim()
-          : values.researchArea,
-      designation: values.designation.trim() || null,
-      reason: values.reason.trim(),
-      profile_url: values.profileUrl.trim() || null,
-      acknowledged: true,
-    },
-  };
+  return { ...account, researcher: researcherPayload(values) };
 }

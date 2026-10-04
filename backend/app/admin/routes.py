@@ -10,11 +10,17 @@ from app.admin import records
 from app.auth.dependencies import require_admin, verify_origin
 from app.auth.sessions import end_all_sessions_for
 from app.database import get_db
-from app.models import User
+from app.models import ResearcherAccessRequest, User
+from app.researcher import requests as researcher_requests
 from app.schemas import (
     AdminRecord,
     AdminRecordDetail,
     AdminRecordFact,
+    AdminResearcherApplicant,
+    AdminResearcherDecision,
+    AdminResearcherDecisionRecord,
+    AdminResearcherRequest,
+    AdminResearcherRequestDetail,
     AdminStatusCount,
     AdminUser,
     AdminUserRoleUpdate,
@@ -128,6 +134,7 @@ def update_user_role(
     user_id: str,
     payload: AdminUserRoleUpdate,
     db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
 ) -> AdminUser:
     user = db.get(User, user_id)
     if user is None:
@@ -144,7 +151,132 @@ def update_user_role(
         )
     if user.role != payload.role:
         user.role = payload.role
+        if payload.role == "researcher":
+            # A waiting request is marked approved, so the request and the
+            # role never disagree. Requests are untouched when a role is removed.
+            researcher_requests.record_manual_promotion(db, user, admin)
         # The account signs in again and gets its new permissions.
         end_all_sessions_for(db, user.id)
         db.commit()
     return AdminUser.model_validate(user)
+
+
+RequestStatusFilter = Literal["pending", "approved", "rejected", "all"]
+
+
+def _person(user: User | None) -> str | None:
+    return (user.display_name or user.email) if user is not None else None
+
+
+def _request_summary(request: ResearcherAccessRequest) -> dict:
+    return {
+        "id": request.id,
+        "status": request.status,
+        "applicant": AdminResearcherApplicant.model_validate(request.user),
+        "institution": request.institution,
+        "research_area": request.research_area,
+        "designation": request.designation,
+        "created_at": request.created_at,
+    }
+
+
+def _request_detail(request: ResearcherAccessRequest) -> AdminResearcherRequestDetail:
+    return AdminResearcherRequestDetail(
+        **_request_summary(request),
+        reason=request.reason,
+        profile_url=request.profile_url,
+        decided_at=request.decided_at,
+        decided_by=_person(request.decided_by),
+        decision_note=request.decision_note,
+        other_requests=[
+            AdminResearcherDecisionRecord(
+                id=other.id,
+                status=other.status,
+                created_at=other.created_at,
+                decided_at=other.decided_at,
+                decided_by=_person(other.decided_by),
+                decision_note=other.decision_note,
+            )
+            for other in request.user.researcher_requests
+            if other.id != request.id
+        ],
+    )
+
+
+@router.get("/researcher-requests", response_model=list[AdminResearcherRequest])
+def list_researcher_requests(
+    request_status: Annotated[RequestStatusFilter, Query(alias="status")] = "pending",
+    db: Session = Depends(get_db),
+) -> list[AdminResearcherRequest]:
+    found = researcher_requests.list_requests(
+        db, None if request_status == "all" else request_status
+    )
+    return [AdminResearcherRequest(**_request_summary(request)) for request in found]
+
+
+def _researcher_request_or_404(db: Session, request_id: str) -> ResearcherAccessRequest:
+    request = researcher_requests.get_request(db, request_id)
+    if request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="This request was not found.",
+        )
+    return request
+
+
+@router.get("/researcher-requests/{request_id}", response_model=AdminResearcherRequestDetail)
+def get_researcher_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+) -> AdminResearcherRequestDetail:
+    return _request_detail(_researcher_request_or_404(db, request_id))
+
+
+def _decide(
+    db: Session,
+    request_id: str,
+    admin: User,
+    payload: AdminResearcherDecision,
+    *,
+    approve: bool,
+) -> AdminResearcherRequestDetail:
+    _researcher_request_or_404(db, request_id)
+    try:
+        request = researcher_requests.decide(
+            db, request_id, admin, approve=approve, note=payload.note
+        )
+    except researcher_requests.DecisionForbidden as error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=str(error)
+        ) from error
+    except researcher_requests.DecisionConflict as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail=str(error)
+        ) from error
+    return _request_detail(request)
+
+
+@router.post(
+    "/researcher-requests/{request_id}/approve",
+    response_model=AdminResearcherRequestDetail,
+)
+def approve_researcher_request(
+    request_id: str,
+    payload: AdminResearcherDecision,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> AdminResearcherRequestDetail:
+    return _decide(db, request_id, admin, payload, approve=True)
+
+
+@router.post(
+    "/researcher-requests/{request_id}/reject",
+    response_model=AdminResearcherRequestDetail,
+)
+def reject_researcher_request(
+    request_id: str,
+    payload: AdminResearcherDecision,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_admin),
+) -> AdminResearcherRequestDetail:
+    return _decide(db, request_id, admin, payload, approve=False)

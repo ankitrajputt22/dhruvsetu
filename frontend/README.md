@@ -16,6 +16,12 @@ FastAPI backend. It is used only on the server and is not sent to the browser.
 The browser calls `/api/...` on the frontend's own address, and Next.js passes
 those calls on to the backend (see `next.config.ts`).
 
+Two settings in `next.config.ts` belong to that hand-over. `proxyTimeout` gives
+slow answers up to two minutes. `proxyClientMaxBodySize` is `21mb`, because
+Next.js passes a request body on whole only up to that size (10 MB by default):
+it has to cover the largest upload the API accepts, a 20 MB document. Raise it
+if the upload limit in the backend is ever raised.
+
 ```bash
 npm install
 npm run dev
@@ -44,10 +50,35 @@ Studio audience settings, not roles.
 |---|---|
 | `/login` | Anyone. Sign In with an email address and a password. There is no role choice: the role comes from the account. |
 | `/register` | Anyone. Create Account, as a General User or with a request for researcher access. It always creates a `user` account. |
-| `/welcome` | A signed-in account, straight after creating it. Shows the account's access and where to continue. |
+| `/welcome` | A signed-in account, straight after creating it. Shows the account type and, when there is a request, the researcher access status. |
+| `/account/researcher-access` | Any signed-in account. Shows where the account stands and, when allowed, the Request Researcher Access form. |
+| `/researcher` | `researcher` and `admin`. The Research Workspace: own submissions and the two submit actions. |
+| `/researcher/submit/document`, `/researcher/submit/dataset` | `researcher` and `admin`. The submission forms. |
 | `/data-lab` | `researcher` and `admin`. Others see "Polar Data Lab is available to research users." |
 | `/admin`, `/admin/records/...` | `admin`. Verification counts, the queue, and the review page. |
+| `/admin/researcher-requests`, `/admin/researcher-requests/...` | `admin`. The requests, filtered by status, and the page to approve or reject one. |
 | `/admin/users` | `admin`. Switches an account between `user` and `researcher`. |
+
+Researcher access in the pages:
+
+- The account menu shows "Researcher Access" to a normal user and "Research
+  Workspace" to a researcher or an admin.
+- The words for the state are always shown as text with the badge: "No
+  researcher access request", "Pending Review", "Approved", "Rejected" or
+  "Removed". A waiting request is never shown as researcher access; the account
+  type stays "General User" until an admin approves it.
+- The researcher questions are one component (`ResearcherFields`) with one set
+  of checks, used both when signing up and on the Researcher Access page.
+- A rejected person sees the administrator's note, if one was written, and gets
+  the form again. While a request is pending the form is not shown.
+- Approve and Reject ask for confirmation before anything is sent. After an
+  approval the person is signed out and signs in again as a researcher.
+- The submission forms check the file type and size before sending (PDF or TXT
+  up to 20 MB, CSV or JSON up to 5 MB). They never send a verification status
+  or a submitter: the API sets both. A new submission is shown as Uploaded.
+- Public document and dataset pages show "Submitted by" with the display name
+  only. The admin review page also shows the submitter's email.
+- All of these pages are plain forms and lists, and work the same in Lite Mode.
 
 The Sign In and Create Account pages:
 
