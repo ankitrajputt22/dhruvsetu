@@ -5,10 +5,11 @@ import re
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
+from app.auth.dependencies import require_researcher, verify_origin
 from app.data_lab import config, sessions
 from app.data_lab.runtime import LabUnavailable
 from app.database import get_db
-from app.models import Dataset
+from app.models import Dataset, User
 from app.schemas import (
     DataLabExecuteRequest,
     DataLabResult,
@@ -18,7 +19,10 @@ from app.schemas import (
     DataLabStatus,
 )
 
-router = APIRouter(prefix="/api/data-lab")
+router = APIRouter(prefix="/api/data-lab", dependencies=[Depends(verify_origin)])
+
+# Running code needs all three: the Data Lab is enabled, the person is signed
+# in, and their role is researcher or admin. Each request is checked here.
 
 SESSION_ID = re.compile(r"^[0-9a-f]{32}$")
 SESSION_ENDED = "This session was not found or has ended. Start a new session."
@@ -55,6 +59,7 @@ def get_status() -> DataLabStatus:
 def create_session(
     payload: DataLabSessionRequest,
     db: Session = Depends(get_db),
+    user: User = Depends(require_researcher),
 ) -> DataLabSession:
     _require_enabled()
     dataset = db.get(Dataset, payload.dataset_id)
@@ -65,7 +70,7 @@ def create_session(
         )
 
     try:
-        session = sessions.create_session(dataset)
+        session = sessions.create_session(dataset, user.id)
     except sessions.DatasetNotSupported as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -98,7 +103,11 @@ def create_session(
 
 
 @router.post("/sessions/{session_id}/execute", response_model=DataLabResult)
-def execute(session_id: str, payload: DataLabExecuteRequest) -> DataLabResult:
+def execute(
+    session_id: str,
+    payload: DataLabExecuteRequest,
+    user: User = Depends(require_researcher),
+) -> DataLabResult:
     _require_enabled()
     _require_session_id(session_id)
     if not payload.code.strip():
@@ -108,7 +117,7 @@ def execute(session_id: str, payload: DataLabExecuteRequest) -> DataLabResult:
         )
 
     try:
-        result = sessions.execute_cell(session_id, payload.code)
+        result = sessions.execute_cell(session_id, payload.code, user.id)
     except sessions.SessionNotFound as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -118,9 +127,12 @@ def execute(session_id: str, payload: DataLabExecuteRequest) -> DataLabResult:
 
 
 @router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
-def end_session(session_id: str) -> Response:
+def end_session(
+    session_id: str,
+    user: User = Depends(require_researcher),
+) -> Response:
     _require_enabled()
     _require_session_id(session_id)
-    if not sessions.end_session(session_id):
+    if not sessions.end_session(session_id, user.id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=SESSION_ENDED)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

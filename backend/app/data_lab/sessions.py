@@ -31,6 +31,8 @@ class TooManySessions(Exception):
 @dataclass
 class LabSession:
     id: str
+    # The account that started the session. Nobody else can use or end it.
+    user_id: str
     dataset_id: str
     dataset_title: str
     file_type: str
@@ -108,7 +110,7 @@ def _sweep() -> None:
         _stop(session)
 
 
-def create_session(dataset: Dataset) -> LabSession:
+def create_session(dataset: Dataset, user_id: str) -> LabSession:
     stored = lab_file(dataset)
     _sweep()
     with _sessions_lock:
@@ -120,6 +122,7 @@ def create_session(dataset: Dataset) -> LabSession:
     process = start_container(session_id, stored.path, stored.file_type)
     session = LabSession(
         id=session_id,
+        user_id=user_id,
         dataset_id=dataset.id,
         dataset_title=dataset.title,
         file_type=stored.file_type,
@@ -131,24 +134,24 @@ def create_session(dataset: Dataset) -> LabSession:
     return session
 
 
-def _get(session_id: str) -> LabSession:
+def _get(session_id: str, user_id: str) -> LabSession:
     _sweep()
     with _sessions_lock:
         session = _sessions.get(session_id)
-    if session is None:
+    if session is None or session.user_id != user_id:
         raise SessionNotFound
     return session
 
 
-def execute_cell(session_id: str, code: str) -> dict:
-    session = _get(session_id)
+def execute_cell(session_id: str, code: str, user_id: str) -> dict:
+    session = _get(session_id, user_id)
     with session.lock:
         session.last_activity = time.monotonic()
         started = time.monotonic()
         try:
             reply = session.process.execute(code, config.cell_timeout_seconds())
         except LabSessionEnded as error:
-            end_session(session_id)
+            end_session(session_id, user_id)
             raise SessionNotFound from error
         session.last_activity = time.monotonic()
 
@@ -157,11 +160,12 @@ def execute_cell(session_id: str, code: str) -> dict:
     return result
 
 
-def end_session(session_id: str) -> bool:
+def end_session(session_id: str, user_id: str) -> bool:
     with _sessions_lock:
-        session = _sessions.pop(session_id, None)
-    if session is None:
-        return False
+        session = _sessions.get(session_id)
+        if session is None or session.user_id != user_id:
+            return False
+        del _sessions[session_id]
     _stop(session)
     return True
 

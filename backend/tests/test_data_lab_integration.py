@@ -18,6 +18,7 @@ from app.database import SessionLocal
 from app.datasets.files import DATASET_STORE
 from app.main import app
 from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS, seed_demo_data
+from conftest import create_test_user, delete_test_users, log_in
 
 client = TestClient(app)
 
@@ -73,10 +74,15 @@ def enabled():
     os.environ["DATA_LAB_ENABLED"] = "true"
     os.environ["DATA_LAB_CELL_TIMEOUT_SECONDS"] = "3"
     sessions.end_all_sessions()
+    # Real sessions need a signed-in research user.
+    researcher = create_test_user("researcher")
+    assert log_in(client, researcher).status_code == 200
     try:
         yield
     finally:
         sessions.end_all_sessions()
+        client.cookies.clear()
+        delete_test_users([researcher.id])
         for name, value in previous.items():
             if value is None:
                 os.environ.pop(name, None)

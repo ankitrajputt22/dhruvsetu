@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { DataLabResearchOnly } from "@/components/data-lab-access";
 import { DataLabWorkspace } from "@/components/data-lab-workspace";
 import { DataMessage } from "@/components/page-heading";
 import { getApi } from "@/lib/api";
+import { canUseDataLab } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-server";
 import type { DataLabStatus, DatasetDetail, DatasetListItem } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -33,6 +36,7 @@ export default async function DataLabPage({
 }) {
   const datasetId = firstValue((await searchParams).dataset);
   const status = (await getApi<DataLabStatus>("/api/data-lab/status")).data;
+  const user = await getCurrentUser();
 
   let body: React.ReactNode;
   if (status === null) {
@@ -42,6 +46,15 @@ export default async function DataLabPage({
       <DataMessage>
         Polar Data Lab is not enabled on this server, so analysis sessions are
         not available.
+      </DataMessage>
+    );
+  } else if (!canUseDataLab(user)) {
+    body = (
+      <DataMessage>
+        <DataLabResearchOnly
+          next={datasetId === null ? "/data-lab" : `/data-lab?dataset=${datasetId}`}
+          user={user}
+        />
       </DataMessage>
     );
   } else if (datasetId === null) {

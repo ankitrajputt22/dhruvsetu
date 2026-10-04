@@ -423,6 +423,87 @@ class OutreachResult(ApiSchema):
     warnings: list[OutreachWarning]
 
 
+class AuthRegister(BaseModel):
+    # Unknown fields, such as a role, are rejected instead of ignored.
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=3, max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    password: str = Field(min_length=10, max_length=128)
+    display_name: str | None = Field(default=None, max_length=120)
+
+
+class AuthLogin(BaseModel):
+    email: str = Field(max_length=255)
+    password: str = Field(max_length=128)
+
+
+class AuthUser(ApiSchema):
+    """What a signed-in user may know about their own account."""
+
+    id: str
+    email: str
+    display_name: str | None
+    role: str
+
+
+class AdminStatusCount(ApiSchema):
+    record_type: str
+    type_label: str
+    uploaded: int
+    reviewed: int
+    verified: int
+
+
+class AdminRecord(ApiSchema):
+    record_type: str
+    type_label: str
+    id: str
+    title: str
+    verification_status: str
+    is_demo_data: bool
+    source_url: str | None
+    created_at: datetime
+
+
+class AdminRecordFact(ApiSchema):
+    label: str
+    value: str
+
+
+class AdminVerificationChange(ApiSchema):
+    from_status: str
+    to_status: str
+    changed_at: datetime
+    changed_by: str | None
+
+
+class AdminRecordDetail(AdminRecord):
+    description: str | None
+    facts: list[AdminRecordFact]
+    related_resources: list[RelatedDocumentResource]
+    # The public page for this record, when it has one.
+    href: str | None
+    changes: list[AdminVerificationChange]
+
+
+class AdminVerificationUpdate(BaseModel):
+    status: Literal["uploaded", "reviewed", "verified"]
+
+
+class AdminUser(ApiSchema):
+    id: str
+    email: str
+    display_name: str | None
+    role: str
+    is_active: bool
+    created_at: datetime
+
+
+class AdminUserRoleUpdate(BaseModel):
+    # Only these two roles can be given from the admin page.
+    role: Literal["user", "researcher"]
+
+
 class AssistantQuestion(BaseModel):
     question: str = Field(max_length=500)
 

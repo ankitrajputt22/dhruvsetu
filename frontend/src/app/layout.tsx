@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { AuthProvider } from "@/components/auth";
 import { LiteModeProvider } from "@/components/lite-mode";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { getCurrentUser } from "@/lib/auth-server";
 import { isLiteMode } from "@/lib/lite-mode-server";
 import "./globals.css";
 
@@ -26,6 +28,7 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const lite = await isLiteMode();
+  const user = await getCurrentUser();
 
   return (
     <html
@@ -34,11 +37,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${lite ? "" : geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <LiteModeProvider initialLite={lite}>
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-        </LiteModeProvider>
+        <AuthProvider user={user}>
+          <LiteModeProvider initialLite={lite}>
+            <SiteHeader />
+            <main className="flex-1">{children}</main>
+            <SiteFooter />
+          </LiteModeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

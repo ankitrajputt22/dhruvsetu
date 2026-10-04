@@ -365,3 +365,45 @@ export type OutreachResult = {
   source: OutreachSourceDetail;
   warnings: OutreachWarning[];
 };
+
+export type AdminStatusCount = {
+  record_type: string;
+  type_label: string;
+  uploaded: number;
+  reviewed: number;
+  verified: number;
+};
+
+export type AdminRecord = {
+  record_type: string;
+  type_label: string;
+  id: string;
+  title: string;
+  verification_status: string;
+  is_demo_data: boolean;
+  source_url: string | null;
+  created_at: string;
+};
+
+export type AdminRecordDetail = AdminRecord & {
+  description: string | null;
+  facts: { label: string; value: string }[];
+  related_resources: RelatedDocumentResource[];
+  // The public page for this record, when it has one.
+  href: string | null;
+  changes: {
+    from_status: string;
+    to_status: string;
+    changed_at: string;
+    changed_by: string | null;
+  }[];
+};
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: "user" | "researcher" | "admin";
+  is_active: boolean;
+  created_at: string;
+};

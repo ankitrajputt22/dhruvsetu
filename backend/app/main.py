@@ -6,7 +6,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.admin.routes import router as admin_router
 from app.api import router as api_router
+from app.auth import config as auth_config
+from app.auth.routes import router as auth_router
 from app.data_lab.routes import router as data_lab_router
 from app.data_lab.sessions import end_all_sessions
 from app.database import get_db
@@ -29,16 +32,15 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
+    allow_origins=list(auth_config.allowed_origins()),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 app.include_router(api_router)
+app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(data_lab_router)
 app.include_router(outreach_router)
 
