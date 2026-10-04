@@ -488,21 +488,91 @@ on a public page changes as soon as the admin changes it.
 
 ## AI assistant
 
-The assistant answers questions using source chunks from the repository. It
-calls `retrieve_source_chunks()`, sends the best matching chunks to Claude, and
-returns the answer with its sources.
+The assistant ("Ask DhruvSetu") answers questions using source chunks from the
+repository. A cloud model writes the answer. The model is reached through
+[OpenRouter](https://openrouter.ai), and only the backend talks to it.
 
-Add these values to the `.env` file in the project root. Never commit the real
-key.
-
-```bash
-ANTHROPIC_API_KEY=
-ANTHROPIC_MODEL=
+```text
+question
+  -> retrieve_source_chunks()   up to 4 chunks from the local semantic index
+  -> keep chunks that score at least 0.35
+  -> OpenRouter                 one request, only if a chunk was kept
+  -> answer and source cards
 ```
 
-`ANTHROPIC_MODEL` is optional. When it is empty the assistant uses
-`claude-opus-5-5`. Without an API key the endpoint returns
-`AI assistant is not configured.` and the rest of DhruvSetu keeps working.
+Retrieval, the semantic index and document ingestion are the same as before.
+Source cards are built from the database, never from the model's text.
+
+### Settings
+
+Add these to the `.env` file in the project root. Never commit the real key.
+
+```bash
+OPENROUTER_API_KEY=
+OPENROUTER_MODEL=openrouter/free
+OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+```
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `OPENROUTER_API_KEY` | none | Your OpenRouter key. Used only by the backend and never sent to the browser. |
+| `OPENROUTER_MODEL` | `openrouter/free` | The free router. It picks a free model that is available at that moment, so two questions can be answered by different models. |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenRouter's OpenAI-compatible API. |
+| `ASSISTANT_MIN_SCORE` | `0.35` | Chunks that score lower are treated as unrelated. |
+| `ASSISTANT_TIMEOUT_SECONDS` | `60` | How long to wait for the model (5 to 120). |
+
+The code uses the official `openai` Python package and its chat completions
+call, pointed at OpenRouter. There is no paid fallback: only the model named
+in `OPENROUTER_MODEL` is asked. A model that is not free costs money, so change
+that setting on purpose only.
+
+### What is sent to OpenRouter
+
+Only three things: the assistant's instructions, the question, and the kept
+chunks (title, page, type, verification status and text). Keys, passwords,
+login cookies, session tokens and other database records are never sent.
+
+The question and the source text are processed by OpenRouter and by the model
+provider it picks. Do not use the assistant with text that must stay private.
+
+### How it behaves
+
+- Weak matches are not sent. The answer is then `The available DhruvSetu
+  sources do not provide enough evidence to answer this confidently.` and no
+  OpenRouter request is used.
+- One question makes at most one request. There are no retries, no background
+  calls and no automatic second attempts.
+- The instructions tell the model to use only the supplied sources, to invent
+  nothing, to say when the sources are not enough, and to treat text inside a
+  source as content, never as instructions.
+- Only the final answer is used. Reasoning fields in the reply are not read,
+  and `<think>` blocks and Markdown bold or heading marks are removed.
+- The model that answered is written to the `app.assistant.service` log at
+  INFO level. It is not shown to users and is not part of the API response.
+
+### When the model cannot answer
+
+| Situation | Status | Message |
+|---|---|---|
+| Key missing or rejected | `503` | `AI assistant is not configured.` |
+| Rate limit reached | `503` | `The AI assistant is busy right now. Please try again in a few minutes.` |
+| No answer before the timeout | `504` | `The AI assistant took too long to answer. Please try again.` |
+| Provider error, no free model available, or an empty answer | `502` | `The AI assistant could not answer right now. Please try again.` |
+| Semantic index not built | `503` | `Source search is not ready right now. Please try again later.` |
+
+The provider's own error text, the key and stack traces are never returned.
+The rest of DhruvSetu keeps working in every one of these cases.
+
+### Test the assistant
+
+The automated tests use a fake provider and never call OpenRouter:
+
+```bash
+pytest tests/test_assistant.py
+```
+
+To try the real model, start the API with a key in `.env` and ask something
+the demo documents cover:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/assistant/ask \
@@ -510,5 +580,18 @@ curl -X POST http://127.0.0.1:8000/api/assistant/ask \
   -d '{"question": "What does the sea ice observation plan record?"}'
 ```
 
-Weak matches are not sent to Claude. Tune the cut-off with
-`ASSISTANT_MIN_SCORE` (default `0.35`). The frontend page is at `/assistant`.
+Then ask `What is the capital of France?`. It should return the "not enough
+evidence" sentence at once, without using an OpenRouter request. The frontend
+page is at `/assistant`.
+
+### Limits of the free tier
+
+- OpenRouter limits free models. At the time of writing (October 2026) its
+  documentation lists 20 requests per minute and 50 per day, or 1000 per day
+  for an account that has bought at least 10 credits. Check the OpenRouter
+  documentation for the current numbers.
+- Free models can be slow, busy or unavailable. The assistant then shows one of
+  the messages above.
+- Answer quality changes with the model the free router picks. Answers are
+  kept to the sources by instruction, which is not a guarantee, so readers
+  should check the source cards.
