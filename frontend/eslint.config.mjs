@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Copies of the map library's worker files, served as they are.
+    "public/maplibre/**",
   ]),
 ]);
 

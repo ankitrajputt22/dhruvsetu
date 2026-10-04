@@ -45,3 +45,70 @@ a {
 summary::-webkit-details-marker {
   display: none;
 }
+
+/* Polar Map globe. The markers are plain elements that the map library
+   positions, so they are styled here and not with utility classes. */
+.polar-globe {
+  background: radial-gradient(circle at 50% 45%, #0e4a73 0%, #062f4f 72%);
+}
+
+.globe-marker {
+  position: relative;
+  display: block;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.globe-marker[data-type="station"] {
+  z-index: 2;
+}
+
+/* The selected marker is larger and sits above the others. */
+.globe-marker[data-selected="true"] {
+  width: 40px;
+  height: 40px;
+  z-index: 3;
+}
+
+.globe-marker-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 1px 2px rgb(6 47 79 / 0.45));
+}
+
+.globe-marker-name {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-top: 2px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.94);
+  box-shadow: 0 1px 2px rgb(6 47 79 / 0.25);
+  color: #0b2436;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.polar-globe[data-names="stations"] .globe-marker[data-type="station"] .globe-marker-name,
+.polar-globe[data-names="all"] .globe-marker-name,
+.globe-marker[data-selected="true"] .globe-marker-name,
+.globe-marker:hover .globe-marker-name,
+.globe-marker:focus-visible .globe-marker-name {
+  opacity: 1;
+}
+
+/* A marker on the far side of the globe cannot be seen, clicked or focused. */
+.maplibregl-marker-covered {
+  visibility: hidden;
+}

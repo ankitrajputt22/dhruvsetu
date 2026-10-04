@@ -32,8 +32,9 @@ export default async function MapPage({
             Polar Map
           </h1>
           <p className="mt-3 max-w-2xl text-slate-600">
-            Explore research stations, expedition locations and connected polar
-            science.
+            Explore India&apos;s polar research stations and field locations on
+            an interactive globe, with the expeditions and records connected to
+            them.
           </p>
         </div>
       </header>
