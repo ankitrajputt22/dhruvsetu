@@ -190,6 +190,19 @@ def _media_detail(db: Session, media: MediaAsset) -> RecordDetail:
     )
 
 
+def _submitter_facts(record) -> list[tuple[str, str]]:
+    """Who submitted a document or a dataset. Shown to admins only."""
+    if getattr(record, "submitted_by_user_id", None) is None:
+        return []
+    submitter = record.submitted_by
+    name = submitter.display_name or "No name given"
+    return [
+        ("Submitted by", f"{name} ({submitter.email})"),
+        ("Submitter role now", submitter.role.capitalize()),
+        ("Submitted on", record.created_at.strftime("%d %B %Y").lstrip("0")),
+    ]
+
+
 def record_detail(db: Session, record_type: str, record) -> RecordDetail:
     """Everything the repository holds about a record, for the reviewer."""
     if record_type == "station":
@@ -202,7 +215,8 @@ def record_detail(db: Session, record_type: str, record) -> RecordDetail:
     return RecordDetail(
         summary=_summary(RECORD_TYPES[record_type], record),
         description=source.summary,
-        facts=[(fact.label, fact.value) for fact in source.facts],
+        facts=[(fact.label, fact.value) for fact in source.facts]
+        + _submitter_facts(record),
         related_resources=source.related_resources,
         href=source.href,
     )

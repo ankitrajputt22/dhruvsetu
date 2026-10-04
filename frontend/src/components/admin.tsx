@@ -4,6 +4,7 @@ import { DataMessage } from "@/components/page-heading";
 
 const sections = [
   { key: "verification", href: "/admin", label: "Verification" },
+  { key: "requests", href: "/admin/researcher-requests", label: "Researcher requests" },
   { key: "users", href: "/admin/users", label: "Users" },
 ] as const;
 
@@ -21,7 +22,7 @@ export function AdminShell({
         Repository administration
       </h1>
       <nav aria-label="Admin sections" className="mt-6 border-b border-slate-200">
-        <ul className="flex gap-6 text-sm font-semibold">
+        <ul className="flex flex-wrap gap-x-6 text-sm font-semibold">
           {sections.map((section) => (
             <li key={section.key}>
               <Link

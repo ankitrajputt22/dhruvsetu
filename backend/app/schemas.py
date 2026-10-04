@@ -250,6 +250,8 @@ class DocumentDetail(DocumentSummary):
     created_at: datetime
     first_page: int | None
     last_page: int | None
+    # Display name of the researcher who submitted the record, when there is one.
+    submitted_by: str | None = None
 
 
 class DatasetListItem(DatasetSummary):
@@ -261,6 +263,8 @@ class DatasetListItem(DatasetSummary):
 
 class DatasetDetail(DatasetListItem):
     file: DatasetFileInfo | None
+    # Display name of the researcher who submitted the record, when there is one.
+    submitted_by: str | None = None
 
 
 class DataLabStatus(ApiSchema):
@@ -464,6 +468,132 @@ class AuthRegister(BaseModel):
         elif self.researcher is not None:
             raise ValueError("Researcher details are only sent with the researcher account type.")
         return self
+
+
+class ResearcherRequestOwn(ApiSchema):
+    """A request as its own applicant may see it. It never names the admin."""
+
+    id: str
+    status: str
+    institution: str
+    research_area: str
+    designation: str | None
+    reason: str
+    profile_url: str | None
+    created_at: datetime
+    decided_at: datetime | None
+    # Written by the admin for the applicant.
+    decision_note: str | None
+
+
+class ResearcherAccess(ApiSchema):
+    role: str
+    # none, pending, approved, rejected or removed. Only the role gives access.
+    access_status: str
+    can_request: bool
+    requests: list[ResearcherRequestOwn]
+
+
+class AdminResearcherApplicant(ApiSchema):
+    id: str
+    email: str
+    display_name: str | None
+    role: str
+
+
+class AdminResearcherRequest(ApiSchema):
+    id: str
+    status: str
+    applicant: AdminResearcherApplicant
+    institution: str
+    research_area: str
+    designation: str | None
+    created_at: datetime
+
+
+class AdminResearcherDecisionRecord(ApiSchema):
+    id: str
+    status: str
+    created_at: datetime
+    decided_at: datetime | None
+    decided_by: str | None
+    decision_note: str | None
+
+
+class AdminResearcherRequestDetail(AdminResearcherRequest):
+    reason: str
+    profile_url: str | None
+    decided_at: datetime | None
+    decided_by: str | None
+    decision_note: str | None
+    # The same person's other requests, newest first.
+    other_requests: list[AdminResearcherDecisionRecord]
+
+
+class AdminResearcherDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    # Shown to the applicant.
+    note: str | None = Field(default=None, max_length=500)
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def blank_is_missing(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+
+DOCUMENT_TYPES = (
+    "research_paper",
+    "report",
+    "field_notes",
+    "technical_note",
+    "data_description",
+    "other",
+)
+
+
+class _Submission(BaseModel):
+    # Unknown fields, such as a verification status or a submitter, are
+    # rejected. The server sets those itself.
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    title: str = Field(min_length=3, max_length=500)
+    source_url: str | None = Field(default=None, max_length=2048, pattern=r"^https?://\S+$")
+    expedition_id: str | None = Field(default=None, max_length=36)
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def blank_is_missing(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+
+class DocumentSubmission(_Submission):
+    document_type: Literal[
+        "research_paper", "report", "field_notes", "technical_note", "data_description", "other"
+    ]
+    publication_date: date | None = None
+
+    @field_validator("publication_date")
+    @classmethod
+    def not_in_the_future(cls, value: date | None) -> date | None:
+        if value is not None and value > date.today():
+            raise ValueError("The publication date cannot be in the future.")
+        return value
+
+
+class DatasetSubmission(_Submission):
+    description: str | None = Field(default=None, max_length=5000)
+    topic_id: str | None = Field(default=None, max_length=36)
+
+
+class SubmissionItem(ApiSchema):
+    type: Literal["document", "dataset"]
+    id: str
+    title: str
+    file_type: str | None
+    verification_status: str
+    created_at: datetime
+    href: str
 
 
 class AuthLogin(BaseModel):

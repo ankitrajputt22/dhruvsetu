@@ -14,6 +14,8 @@ from app.data_lab.routes import router as data_lab_router
 from app.data_lab.sessions import end_all_sessions
 from app.database import get_db
 from app.outreach.routes import router as outreach_router
+from app.researcher.routes import access_router as researcher_access_router
+from app.researcher.routes import workspace_router as researcher_workspace_router
 
 
 @asynccontextmanager
@@ -43,6 +45,8 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(data_lab_router)
 app.include_router(outreach_router)
+app.include_router(researcher_access_router)
+app.include_router(researcher_workspace_router)
 
 
 @app.get("/")

@@ -21,9 +21,11 @@ export default async function AdminUsersPage() {
     <AdminShell current="users">
       <h2 className="text-xl font-semibold text-slate-950">Accounts</h2>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-        An account can be a User or a Researcher. Researchers can use Polar Data
-        Lab. Admin accounts are not changed here. An account signs in again after
-        its role changes.
+        An account can be a User or a Researcher. Researcher access is normally
+        given by approving a request under Researcher requests. Giving the role
+        here also marks a waiting request as approved. Removing it keeps the
+        records the person submitted. Admin accounts are not changed here. An
+        account signs in again after its role changes.
       </p>
 
       <div className="mt-5">

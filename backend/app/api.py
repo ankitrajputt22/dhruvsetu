@@ -96,6 +96,12 @@ def _linked_document(document: Document) -> LinkedDocument:
     )
 
 
+def _submitter_name(record: Document | Dataset) -> str | None:
+    # Only the display name is public. The email and the account ID are not.
+    submitter = record.submitted_by
+    return submitter.display_name if submitter is not None else None
+
+
 def _document_summary(document: Document, chunk_count: int) -> DocumentSummary:
     return DocumentSummary(
         **_linked_document(document).model_dump(),
@@ -461,6 +467,7 @@ def get_document(
         created_at=document.created_at,
         first_page=first_page,
         last_page=last_page,
+        submitted_by=_submitter_name(document),
     )
 
 
@@ -800,6 +807,7 @@ def get_dataset(dataset_id: str, db: Session = Depends(get_db)) -> DatasetDetail
     return DatasetDetail(
         **_dataset_list_item(dataset).model_dump(),
         file=_dataset_file_info(dataset),
+        submitted_by=_submitter_name(dataset),
     )
 
 

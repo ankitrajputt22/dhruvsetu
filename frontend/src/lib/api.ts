@@ -52,6 +52,15 @@ export async function postApi<T>(
   }
 }
 
+// Sends a form with a file. The browser sets the content type itself.
+export async function postForm<T>(path: string, form: FormData): Promise<ApiResult<T>> {
+  try {
+    return await readResult<T>(await fetch(apiUrl(path), { method: "POST", body: form }));
+  } catch {
+    return { data: null, status: null, detail: null };
+  }
+}
+
 export async function patchApi<T>(path: string, body: unknown): Promise<ApiResult<T>> {
   try {
     return await readResult<T>(
