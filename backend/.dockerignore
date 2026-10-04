@@ -1,0 +1,10 @@
+.venv
+.cache
+.pytest_cache
+**/__pycache__
+backups
+tests
+Dockerfile
+.dockerignore
+# Built on the server with: python -m app.search.build_index
+data/semantic_search

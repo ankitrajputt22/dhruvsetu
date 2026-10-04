@@ -1,5 +1,7 @@
 .DS_Store
 .env
+.env.*
+!.env.example
 backend/.cache/
 backend/backups/
 backend/data/semantic_search/

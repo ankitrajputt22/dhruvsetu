@@ -1,6 +1,7 @@
 # DhruvSetu backend
 
-The backend uses FastAPI and runs locally.
+The backend uses FastAPI and runs locally. For a server, see
+[DEPLOYMENT.md](../DEPLOYMENT.md) and the `Dockerfile` in this folder.
 
 ## Set up
 
