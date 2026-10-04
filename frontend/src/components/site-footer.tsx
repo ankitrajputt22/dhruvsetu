@@ -10,6 +10,7 @@ const links = [
   { href: "/documents", label: "Documents" },
   { href: "/map", label: "Polar Map" },
   { href: "/data-lab", label: "Data Lab" },
+  { href: "/outreach", label: "Outreach Studio" },
   { href: "/assistant", label: "Ask DhruvSetu" },
 ];
 

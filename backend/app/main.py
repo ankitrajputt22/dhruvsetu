@@ -10,6 +10,7 @@ from app.api import router as api_router
 from app.data_lab.routes import router as data_lab_router
 from app.data_lab.sessions import end_all_sessions
 from app.database import get_db
+from app.outreach.routes import router as outreach_router
 
 
 @asynccontextmanager
@@ -39,6 +40,7 @@ app.add_middleware(
 
 app.include_router(api_router)
 app.include_router(data_lab_router)
+app.include_router(outreach_router)
 
 
 @app.get("/")
