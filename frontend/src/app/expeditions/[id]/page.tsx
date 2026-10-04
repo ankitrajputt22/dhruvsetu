@@ -9,6 +9,7 @@ import { RelatedResources } from "@/components/related-resources";
 import { OriginalSourceLink } from "@/components/source-link";
 import { VerificationBadge } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
+import { isLiteMode } from "@/lib/lite-mode-server";
 import { formatCoordinates, formatDate, formatDateRange } from "@/lib/format";
 import type { ExpeditionDetail, RelatedDocumentResource } from "@/lib/types";
 
@@ -34,6 +35,8 @@ export default async function ExpeditionDetailPage({
   }
 
   const expedition = result.data;
+  // In Lite Mode the photo is left out, so it is never requested.
+  const lite = await isLiteMode();
   return (
     <div className="mx-auto w-full min-w-0 max-w-7xl overflow-hidden px-6 py-10 lg:px-8 lg:py-14">
       <Link
@@ -64,16 +67,18 @@ export default async function ExpeditionDetailPage({
         </div>
       </header>
 
-      <div className="relative mt-8 aspect-[16/6] min-h-64 w-full max-w-full overflow-hidden rounded-2xl bg-slate-200 shadow-sm">
-        <Image
-          alt="Antarctic ice sheet viewed during a polar expedition"
-          className="object-cover"
-          fill
-          priority
-          sizes="(min-width: 1280px) 1216px, 100vw"
-          src="/images/expeditions/antarctica-expedition.jpg"
-        />
-      </div>
+      {!lite && (
+        <div className="relative mt-8 aspect-[16/6] min-h-64 w-full max-w-full overflow-hidden rounded-2xl bg-slate-200 shadow-sm">
+          <Image
+            alt="Antarctic ice sheet viewed during a polar expedition"
+            className="object-cover"
+            fill
+            priority
+            sizes="(min-width: 1280px) 1216px, 100vw"
+            src="/images/expeditions/antarctica-expedition.jpg"
+          />
+        </div>
+      )}
 
       <nav className="mt-6 max-w-full overflow-x-auto border-b border-slate-200" aria-label="Expedition sections">
         <ul className="flex min-w-max gap-6 text-sm font-medium text-slate-600">
