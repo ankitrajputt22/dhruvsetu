@@ -7,11 +7,14 @@ import { PageHero } from "@/components/page-hero";
 import { DataMessage } from "@/components/page-heading";
 import { VerificationBadge } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
+import { isLiteMode } from "@/lib/lite-mode-server";
 import { formatDateRange } from "@/lib/format";
 import type { Expedition } from "@/lib/types";
 
 export default async function ExpeditionsPage() {
   const result = await getApi<Expedition[]>("/api/expeditions");
+  // In Lite Mode the card images are left out, so they are never requested.
+  const lite = await isLiteMode();
 
   return (
     <>
@@ -47,16 +50,18 @@ export default async function ExpeditionsPage() {
                   className="flex overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
                 >
                   <article className="flex w-full flex-col">
-                    <div className="relative aspect-[16/9] overflow-hidden bg-slate-200">
-                      <Image
-                        alt="Antarctic landscape"
-                        className="object-cover transition duration-300 hover:scale-[1.02]"
-                        fill
-                        sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
-                        src="/images/expeditions/antarctica-expedition.jpg"
-                        style={{ objectPosition: `${45 + index * 8}% center` }}
-                      />
-                    </div>
+                    {!lite && (
+                      <div className="relative aspect-[16/9] overflow-hidden bg-slate-200">
+                        <Image
+                          alt="Antarctic landscape"
+                          className="object-cover transition duration-300 hover:scale-[1.02]"
+                          fill
+                          sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
+                          src="/images/expeditions/antarctica-expedition.jpg"
+                          style={{ objectPosition: `${45 + index * 8}% center` }}
+                        />
+                      </div>
+                    )}
                     <div className="flex flex-1 flex-col p-5">
                       <div className="flex items-start justify-between gap-3">
                         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-sky-800">

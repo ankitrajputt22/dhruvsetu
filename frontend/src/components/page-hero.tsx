@@ -1,6 +1,8 @@
 import Image from "next/image";
 
-export function PageHero({
+import { isLiteMode } from "@/lib/lite-mode-server";
+
+export async function PageHero({
   eyebrow,
   title,
   description,
@@ -13,9 +15,12 @@ export function PageHero({
   image?: string;
   imageAlt?: string;
 }) {
+  // In Lite Mode the hero keeps its text on a plain background.
+  const lite = await isLiteMode();
+
   return (
     <header className="relative isolate overflow-hidden bg-[#0b4268] text-white">
-      {image && (
+      {image && !lite && (
         <Image
           alt={imageAlt ?? ""}
           className="object-cover object-center"

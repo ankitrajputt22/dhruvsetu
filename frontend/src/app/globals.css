@@ -5,6 +5,11 @@
   --foreground: #0b2436;
 }
 
+/* Used for code when the code font is not loaded (Lite Mode). */
+html {
+  --font-geist-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

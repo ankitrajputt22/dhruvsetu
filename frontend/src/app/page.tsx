@@ -7,6 +7,7 @@ import { ResourceLinkCard } from "@/components/resource-link-card";
 import { SearchForm } from "@/components/search-form";
 import { SectionHeading } from "@/components/section-heading";
 import { getApi } from "@/lib/api";
+import { isLiteMode } from "@/lib/lite-mode-server";
 import type {
   Dataset,
   Document,
@@ -50,6 +51,8 @@ const resources = [
 ];
 
 export default async function Home() {
+  // In Lite Mode the images below are left out, so they are never requested.
+  const lite = await isLiteMode();
   const [expeditions, publications, datasets, documents, topics, mapLocations] =
     await Promise.all([
       getApi<Expedition[]>("/api/expeditions"),
@@ -107,14 +110,16 @@ export default async function Home() {
   return (
     <>
       <section className="relative isolate min-h-[31rem] overflow-hidden bg-[#073554] text-white">
-        <Image
-          alt="Polar research vessel in an Antarctic coastal landscape"
-          className="object-cover object-center"
-          fill
-          priority
-          sizes="100vw"
-          src="/images/home/antarctica-hero.jpg"
-        />
+        {!lite && (
+          <Image
+            alt="Polar research vessel in an Antarctic coastal landscape"
+            className="object-cover object-center"
+            fill
+            priority
+            sizes="100vw"
+            src="/images/home/antarctica-hero.jpg"
+          />
+        )}
         <div className="absolute inset-0 bg-gradient-to-r from-[#031e34]/90 via-[#052f4f]/70 to-[#052f4f]/20" />
         <div className="relative mx-auto flex min-h-[31rem] max-w-7xl items-center px-6 py-16 lg:px-8">
           <div className="max-w-3xl">
@@ -151,7 +156,7 @@ export default async function Home() {
         </section>
 
         <section className="mt-16 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="grid lg:grid-cols-[0.9fr_1.1fr]">
+          <div className={lite ? "" : "grid lg:grid-cols-[0.9fr_1.1fr]"}>
             <div className="flex flex-col justify-center p-7 sm:p-10">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-sky-800">
                 Polar regions
@@ -189,15 +194,17 @@ export default async function Home() {
                 Explore Polar Map <span aria-hidden="true">→</span>
               </Link>
             </div>
-            <div className="relative min-h-72 bg-slate-200">
-              <Image
-                alt="Bharati research station building in Antarctica"
-                className="object-cover"
-                fill
-                sizes="(min-width: 1024px) 55vw, 100vw"
-                src="/images/stations/bharati.jpg"
-              />
-            </div>
+            {!lite && (
+              <div className="relative min-h-72 bg-slate-200">
+                <Image
+                  alt="Bharati research station building in Antarctica"
+                  className="object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 55vw, 100vw"
+                  src="/images/stations/bharati.jpg"
+                />
+              </div>
+            )}
           </div>
         </section>
 

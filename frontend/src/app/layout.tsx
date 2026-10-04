@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { LiteModeProvider } from "@/components/lite-mode";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { isLiteMode } from "@/lib/lite-mode-server";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -9,9 +11,11 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+// The code font is used on few pages, so it is fetched only where it appears.
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -20,16 +24,21 @@ export const metadata: Metadata = {
     "India's Polar Science Knowledge, Analysis and Outreach Platform",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const lite = await isLiteMode();
+
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // In Lite Mode code is shown in the device's own monospace font.
+      className={`${geistSans.variable} ${lite ? "" : geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <SiteFooter />
+        <LiteModeProvider initialLite={lite}>
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+          <SiteFooter />
+        </LiteModeProvider>
       </body>
     </html>
   );

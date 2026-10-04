@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
 
 import { DemoLabel } from "@/components/demo-label";
+import { useLiteMode } from "@/components/lite-mode";
 import type { MapPoint } from "@/components/polar-map";
 import { VerificationBadge } from "@/components/verification-badge";
 import { formatCoordinates } from "@/lib/format";
@@ -101,6 +102,11 @@ export function PolarMapExplorer({
   const [expeditionId, setExpeditionId] = useState(startExpedition);
   const [topicId, setTopicId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(startLocation);
+  // In Lite Mode the map, its code and its tiles load only when asked for.
+  // The request lasts until the page is left or reloaded.
+  const { lite } = useLiteMode();
+  const [mapRequested, setMapRequested] = useState(false);
+  const showMap = !lite || mapRequested;
   const [focus, setFocus] = useState<{ id: string } | null>(
     startLocation ? { id: startLocation } : null,
   );
@@ -304,26 +310,54 @@ export function PolarMapExplorer({
               markers. Every location is still listed below.
             </p>
           )}
-          <PolarMap
-            focus={focus}
-            onSelect={(id) => choose(id, false)}
-            points={points}
-            selectedId={selected?.id ?? null}
-          />
-          <div className="space-y-3 px-5 py-4">
-            <ul aria-label="Marker types" className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-600">
-              {(["station", "expedition_location", "other"] as const).map((type) => (
-                <li key={type} className="flex items-center gap-1.5">
-                  <TypeIcon type={type} />
-                  {mapTypeLabels[type]}
-                </li>
-              ))}
-            </ul>
-            <p className="text-xs leading-5 text-slate-500">
-              Map positions are for exploration and repository navigation, not
-              scientific distance or area measurement.
-            </p>
-          </div>
+          {showMap ? (
+            <>
+              <PolarMap
+                focus={focus}
+                onSelect={(id) => choose(id, false)}
+                points={points}
+                selectedId={selected?.id ?? null}
+              />
+              <div className="space-y-3 px-5 py-4">
+                <ul aria-label="Marker types" className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-600">
+                  {(["station", "expedition_location", "other"] as const).map((type) => (
+                    <li key={type} className="flex items-center gap-1.5">
+                      <TypeIcon type={type} />
+                      {mapTypeLabels[type]}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs leading-5 text-slate-500">
+                  Map positions are for exploration and repository navigation, not
+                  scientific distance or area measurement.
+                </p>
+                {lite && (
+                  <p className="text-xs leading-5 text-slate-500">
+                    Lite Mode is still on. The map was loaded for this page only.
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="px-5 py-6">
+              <h2 className="text-xl font-semibold text-slate-950">Polar locations</h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Lite Mode is on, so the interactive map is not loaded. Every
+                location is listed below with its region, coordinates and
+                related expeditions.
+              </p>
+              <button
+                className="mt-4 rounded-lg border border-sky-800 bg-white px-4 py-2.5 text-sm font-semibold text-sky-800 transition hover:bg-sky-50"
+                onClick={() => setMapRequested(true)}
+                type="button"
+              >
+                Load Interactive Map
+              </button>
+              <p className="mt-2 text-xs text-slate-500">
+                This loads the map for this page only. Lite Mode stays on.
+              </p>
+            </div>
+          )}
         </section>
 
         <section
