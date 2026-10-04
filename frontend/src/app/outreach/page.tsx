@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { OutreachStudio } from "@/components/outreach-studio";
+import { PlannedMultimedia } from "@/components/planned-multimedia";
 
 export const metadata: Metadata = {
   title: "Outreach Studio",
@@ -30,6 +31,10 @@ export default function OutreachPage() {
 
       <div className="mx-auto max-w-7xl px-6 py-8 lg:px-8 lg:py-10">
         <OutreachStudio />
+        {/* A planned feature, described only. It is below the working tool. */}
+        <div className="mt-12">
+          <PlannedMultimedia />
+        </div>
       </div>
     </>
   );
