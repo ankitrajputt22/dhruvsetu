@@ -617,11 +617,14 @@ topics, datasets and documents connected through those expeditions.
   `expedition_location` when it is linked to an expedition, otherwise `other`.
 - `polar_region` is set from latitude only: south of 60 degrees south is
   Antarctic, north of 66.5 degrees north is Arctic. Names are not used.
-- A standard web map cannot draw points beyond 85 degrees latitude. Those
-  locations keep their coordinates as text and are marked `mappable: false`.
+- Web map tiles end at 85 degrees latitude. A location beyond that keeps its
+  coordinates as text and is marked `mappable: false`. No seeded location is
+  that close to a pole.
 
-The frontend map uses Leaflet with OpenStreetMap standard tiles. No API key is
-needed. A location without coordinates has no marker.
+The frontend draws these locations on a globe with MapLibre GL JS and the
+vector tiles of OpenFreeMap. No API key is needed. A location without
+coordinates has no marker. The API was not changed for the globe. See "Polar
+Map globe" in the frontend README.
 
 ### Station and field-site coordinates
 

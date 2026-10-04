@@ -86,6 +86,26 @@ export const siteImages = {
   },
 } satisfies Record<string, SiteImage>;
 
+// The photograph for a location on the Polar Map, with a caption that says
+// exactly what it shows. A location without a licensed photograph gets none:
+// there is none of Bharati, and none of the Himadri building itself.
+export function locationPhoto(location: {
+  name: string;
+  stations: { name: string }[];
+}): { image: SiteImage; caption: string } | null {
+  const station = location.stations[0]?.name;
+  if (station === "Maitri") {
+    return { image: siteImages.maitriStation, caption: siteImages.maitriStation.caption };
+  }
+  if (station === "Himadri") {
+    return { image: siteImages.nyAlesund, caption: "Ny-Ålesund, where Himadri is located." };
+  }
+  if (station === undefined && location.name.startsWith("Kongsfjorden")) {
+    return { image: siteImages.kongsfjordenShore, caption: siteImages.kongsfjordenShore.caption };
+  }
+  return null;
+}
+
 export function photoCredit(image: SiteImage): string {
   return `Photo: ${image.credit}, ${image.licence}`;
 }

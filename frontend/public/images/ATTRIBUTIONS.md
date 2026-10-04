@@ -53,7 +53,8 @@ Rules:
 
 - **Shows:** The main building of Maitri, India's research station in Antarctica.
 - **Used on:** Home page ("India in the Polar Regions"), the detail page of each
-  Antarctic expedition, and Antarctic expedition cards.
+  Antarctic expedition, Antarctic expedition cards, and the Polar Map details
+  of Maitri.
 - **Creator:** Prakash khatarkar (own work).
 - **Source page:** https://commons.wikimedia.org/wiki/File:%E0%A4%AE%E0%A5%88%E0%A4%A4%E0%A5%8D%E0%A4%B0%E0%A5%80,_%E0%A4%AD%E0%A4%BE%E0%A4%B0%E0%A4%A4%E0%A5%80%E0%A4%AF_%E0%A4%B8%E0%A5%8D%E0%A4%9F%E0%A5%87%E0%A4%B6%E0%A4%A8_%E0%A4%85%E0%A4%82%E0%A4%9F%E0%A4%BE%E0%A4%B0%E0%A5%8D%E0%A4%95%E0%A4%9F%E0%A4%BF%E0%A4%95_%E0%A4%AE%E0%A4%B9%E0%A4%BE%E0%A4%A6%E0%A5%8D%E0%A4%B5%E0%A5%80%E0%A4%AA.jpg
 - **Licence:** CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0
@@ -82,7 +83,9 @@ Rules:
 - **Shows:** Ny-Ålesund, the research settlement in Svalbard, seen from
   Kongsfjorden, 9 August 2012. India's Himadri station is in Ny-Ålesund. The
   photograph does not single out the Himadri building.
-- **Used on:** Cards and detail pages of the Arctic expeditions.
+- **Used on:** Cards and detail pages of the Arctic expeditions, and the Polar
+  Map details of Himadri, with the caption "Ny-Ålesund, where Himadri is
+  located".
 - **Creator:** Bjoertvedt (own work).
 - **Source page:** https://commons.wikimedia.org/wiki/File:Ny-Aalesund_Zeppelinfjellet_IMG_6394.JPG
 - **Licence:** CC BY-SA 3.0, https://creativecommons.org/licenses/by-sa/3.0
@@ -106,7 +109,8 @@ Rules:
 - **Shows:** An old wooden hut on the shore of Kongsfjorden near Ny-Ålesund,
   Svalbard, with a small piece of ice in the fjord, 8 August 2013. The file page
   describes the hut as left from the mining days. It is not a research building.
-- **Used on:** Cards of the Arctic expeditions on the Expeditions page.
+- **Used on:** Cards of the Arctic expeditions on the Expeditions page, and the
+  Polar Map details of the Kongsfjorden mooring site.
 - **Creator:** Rob Oo (Flickr).
 - **Source page:** https://commons.wikimedia.org/wiki/File:Remains,_Kongsfjorden,_Ny-Alesund.jpg
 - **Licence:** CC BY 2.0, https://creativecommons.org/licenses/by/2.0
@@ -127,8 +131,16 @@ These four files had no recorded source or licence, so they were deleted:
 - **Bharati station:** no photograph with a clear licence was found. The only
   candidate on Wikimedia Commons is marked public domain with an unknown author,
   which is not clear enough. The station is shown with its facts and its place
-  on the map.
+  on the Polar Map, where its details say that no licensed photograph is held.
 - **Himadri station:** no licensed photograph of the station building was found.
   The Ny-Ålesund photograph above shows the settlement it stands in.
 - **Datasets, publications, documents, search, Data Lab and admin pages:** these
   show data and records, not decorative photographs.
+
+## Map data on the Polar Map
+
+The globe on `/map` is not a photograph. It is drawn in the browser by MapLibre
+GL JS (BSD 3-Clause) from the vector tiles of OpenFreeMap, which follow the
+OpenMapTiles schema and are made from OpenStreetMap data. No API key is used.
+The credit "OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors" is shown
+on the globe and under it.

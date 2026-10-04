@@ -157,6 +157,82 @@ Rules:
 - A page never depends on a photograph. Each image area has a plain background
   behind it, and Lite Mode leaves the photographs out.
 
+## Polar Map globe
+
+`/map` shows the repository's locations on a globe. The data still comes from
+`GET /api/map`, which was not changed.
+
+How it is built:
+
+- **Library:** [MapLibre GL JS](https://maplibre.org/) 6.12.0 with its globe
+  projection (BSD 3-Clause). Leaflet was removed.
+- **Map data:** vector tiles of [OpenFreeMap](https://openfreemap.org)
+  (`https://tiles.openfreemap.org/planet`). They need no API key and no account.
+  They follow the OpenMapTiles schema and are made from OpenStreetMap data.
+  There is no service guarantee: if the tiles do not arrive, the page says so
+  and keeps the text list.
+- **Attribution:** "OpenFreeMap, © OpenMapTiles, © OpenStreetMap contributors"
+  is shown by the map's own attribution control and again as text under the
+  globe, where it is always in view. On a narrow screen the control on the
+  globe starts folded behind its button, so that it does not cover the
+  Antarctic stations.
+- **Style:** `src/lib/globe-style.ts`. It is written for this site: land, a
+  polar-blue ocean, white ice and a few names. There are no roads, buildings,
+  terrain or satellite images. National borders are left out on purpose,
+  because borders drawn from OpenStreetMap do not match every country's
+  official maps.
+- **Files:** `src/components/polar-globe.tsx` is the only file that imports
+  MapLibre. `src/components/polar-map-explorer.tsx` is the page around it:
+  filters, region buttons, details panel and the text list. `src/lib/globe.ts`
+  holds the plain rules (views, zoom, filters, marker names) and has no map
+  code in it.
+- **Loading:** the globe component is loaded with `next/dynamic` and
+  `ssr: false`, so MapLibre is never part of the server render or of any other
+  page. It is fetched when the globe is shown.
+- **Worker files:** MapLibre 6 runs part of its work in a web worker that it
+  loads by address. The two files it needs are copies from the package in
+  `public/maplibre/`. After changing the `maplibre-gl` version, run
+  `npm run maplibre:worker` to copy them again. A test fails if they differ.
+
+How it behaves:
+
+- **Views:** the buttons Global, Antarctica and Arctic turn the globe. Global
+  shows the world with Himadri at the top and Maitri and Bharati at the bottom.
+  Antarctica is centred between Maitri and Bharati. Arctic is centred on
+  Svalbard. The views are in `regionCameras` in `src/lib/globe.ts`. The buttons
+  move the view and filter nothing. The camera angle is narrow (12 degrees) so
+  that almost a full half of the Earth is in view.
+- **Opening turn:** the globe opens with a slow turn of 30 degrees that ends on
+  the Global view. It stops at the first touch, key or button and never starts
+  again. It is skipped when a link opens one location.
+- **Reduced motion:** with `prefers-reduced-motion`, there is no opening turn
+  and a view change is a direct jump.
+- **Markers:** a filled circle with a flag is a research station, an open ring
+  is an expedition location, and a diamond is another repository location. Each
+  marker is a button with a label such as "Maitri research station,
+  Antarctica". Station names appear when the view is close. The selected marker
+  is larger. A marker on the far side of the globe is hidden and cannot be
+  clicked or focused.
+- **Details panel:** selecting a marker shows the name, type, region,
+  coordinates, description, station details with verification status and source
+  link, related expeditions and their records, and locations so close that
+  their markers overlap. A photograph is shown only when a licensed one exists
+  (see "Images"), and only once the location is selected. Bharati has none, and
+  the panel says so.
+- **Filters:** search, type, expedition and research topic. The globe follows
+  them: to the one match (which is also selected), to the polar region the
+  matches share, or back to the world.
+- **Links:** `/map?location=<id>` opens the globe on that location with its
+  details open. `/map?expedition=<id>` shows only that expedition's locations
+  and turns to them. Both are used by the expedition pages.
+- **Zooming:** the page scrolls normally over the globe. Zooming needs Ctrl (or
+  Cmd) with the wheel, two fingers on a touch screen, or the + and - buttons.
+  The globe says so when it is tried without. North always stays up.
+- **When it cannot be shown:** if WebGL is not available, or the map data does
+  not arrive, the page shows "Interactive map could not be loaded." with a Try
+  Again button. The text list of locations stays, and the rest of the site is
+  not affected.
+
 ## Lite Mode
 
 Lite Mode makes DhruvSetu usable on slow or expensive connections. It is
@@ -169,9 +245,10 @@ What it does:
   Expeditions page header, the photos on expedition cards and on the expedition
   page, and the photo in the sign-in panel. The text, counts
   and search box stay.
-- The Polar Map page does not load the map library or any map tiles. It shows
-  the same locations as text: name, region, coordinates, station, verification
-  status and related expeditions.
+- The Polar Map page does not load the globe: no map library, no worker, no map
+  tiles and no photograph. It says "Interactive globe is paused in Lite Mode."
+  and shows the same locations as text: name, type, region, coordinates,
+  station, verification status, source link and related expeditions.
 - Code is shown in the device's own monospace font instead of a downloaded one.
 
 What stays the same: search (keyword and semantic), expeditions, scientists,
@@ -181,10 +258,10 @@ Lab. The dataset chart stays because it is drawn in the browser from the
 preview data and makes no extra request. A Data Lab session still starts only
 when a dataset is opened in the Data Lab.
 
-Loading the map on request: the Polar Map page has a "Load Interactive Map"
-button in Lite Mode. It loads the map for that page only. Lite Mode stays on,
-and after leaving or reloading the page the map is not loaded again until the
-button is used.
+Loading the globe on request: the Polar Map page has a "Load Interactive Globe"
+button in Lite Mode. It loads the globe for that page only. Lite Mode stays on,
+photographs stay off, and after leaving or reloading the page the globe is not
+loaded again until the button is used.
 
 How the choice is stored: in this browser only, in `localStorage`
 (`dhruvsetu.liteMode`). It is copied into a small cookie (`dhruvsetu_lite`) so
