@@ -228,6 +228,12 @@ export default async function Home() {
               Create a short explanation, classroom note, news brief or social
               post from a repository record, with its sources.
             </p>
+            <p className="mt-2 text-sm text-slate-600">
+              <Link className="font-medium text-sky-800 hover:underline" href="/outreach#multimedia">
+                Multimedia Outreach
+              </Link>{" "}
+              — Coming Soon
+            </p>
           </div>
           <Link
             className="inline-flex w-fit shrink-0 items-center gap-2 rounded-lg border border-sky-800 px-5 py-2.5 text-sm font-semibold text-sky-800 transition hover:bg-sky-50"
