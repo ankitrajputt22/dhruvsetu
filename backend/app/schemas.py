@@ -2,7 +2,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.geo import valid_coordinates
 
@@ -423,6 +423,25 @@ class OutreachResult(ApiSchema):
     warnings: list[OutreachWarning]
 
 
+class ResearcherAccessDetails(BaseModel):
+    """What a person writes when asking for researcher access at signup."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    institution: str = Field(min_length=2, max_length=200)
+    research_area: str = Field(min_length=2, max_length=120)
+    designation: str | None = Field(default=None, max_length=120)
+    reason: str = Field(min_length=1, max_length=1000)
+    profile_url: str | None = Field(default=None, max_length=500, pattern=r"^https?://\S+$")
+    # The person confirmed that an admin must approve researcher access.
+    acknowledged: Literal[True]
+
+    @field_validator("designation", "profile_url", mode="before")
+    @classmethod
+    def blank_is_missing(cls, value: object) -> object:
+        return None if isinstance(value, str) and not value.strip() else value
+
+
 class AuthRegister(BaseModel):
     # Unknown fields, such as a role, are rejected instead of ignored.
     model_config = ConfigDict(extra="forbid")
@@ -430,6 +449,21 @@ class AuthRegister(BaseModel):
     email: str = Field(min_length=3, max_length=255, pattern=r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
     password: str = Field(min_length=10, max_length=128)
     display_name: str | None = Field(default=None, max_length=120)
+    # What the person is asking for. It never sets the role: every new account
+    # is a normal user, whatever is chosen here.
+    account_type: Literal["user", "researcher"] = "user"
+    researcher: ResearcherAccessDetails | None = None
+
+    @model_validator(mode="after")
+    def researcher_details_match_account_type(self) -> "AuthRegister":
+        if self.account_type == "researcher":
+            if self.researcher is None:
+                raise ValueError("Researcher details are needed to ask for researcher access.")
+            if not (self.display_name or "").strip():
+                raise ValueError("A full name is needed to ask for researcher access.")
+        elif self.researcher is not None:
+            raise ValueError("Researcher details are only sent with the researcher account type.")
+        return self
 
 
 class AuthLogin(BaseModel):

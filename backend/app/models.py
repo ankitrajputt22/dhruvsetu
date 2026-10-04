@@ -493,6 +493,11 @@ class User(UUIDMixin, TimestampMixin, Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    researcher_request: Mapped[ResearcherAccessRequest | None] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class UserSession(UUIDMixin, Base):
@@ -512,6 +517,33 @@ class UserSession(UUIDMixin, Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
     user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class ResearcherAccessRequest(UUIDMixin, Base):
+    """What a person wrote when asking for researcher access at signup.
+
+    Saving a request gives no permissions. The account stays a normal user
+    until an admin changes its role.
+    """
+
+    __tablename__ = "researcher_access_requests"
+
+    user_id: Mapped[str] = mapped_column(
+        CHAR(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    institution: Mapped[str] = mapped_column(String(200), nullable=False)
+    research_area: Mapped[str] = mapped_column(String(120), nullable=False)
+    designation: Mapped[str | None] = mapped_column(String(120))
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    profile_url: Mapped[str | None] = mapped_column(String(500))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.now()
+    )
+
+    user: Mapped[User] = relationship(back_populates="researcher_request")
 
 
 class VerificationChange(UUIDMixin, Base):

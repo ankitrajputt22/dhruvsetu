@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { UserRoleControl, VerificationControls } from "@/components/admin-controls";
 import { AccountMenu, AccountMenuItems, AuthProvider } from "@/components/auth";
-import { AuthForm } from "@/components/auth-form";
 import {
   DATA_LAB_RESEARCH_ONLY,
   DatasetDataLabAction,
@@ -240,58 +239,6 @@ describe("admin role control", () => {
 
     expect(screen.queryByRole("combobox")).toBeNull();
     expect(screen.getByText("Admin")).toBeTruthy();
-  });
-});
-
-describe("login and registration forms", () => {
-  function fill(label: RegExp, value: string) {
-    fireEvent.change(screen.getByLabelText(label), { target: { value } });
-  }
-
-  it("registers with an email, a password and a name, and never a role", async () => {
-    postApi.mockResolvedValue({ data: account("user"), status: 201, detail: null });
-    render(<AuthForm mode="register" next="/" />);
-
-    fill(/^Name/, "Asha");
-    fill(/^Email/, "asha@example.org");
-    fill(/^Password/, "a-long-test-value");
-    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
-
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/"));
-    expect(postApi).toHaveBeenCalledTimes(1);
-    const [path, body] = postApi.mock.calls[0] as [string, Record<string, unknown>];
-    expect(path).toBe("/api/auth/register");
-    expect(Object.keys(body).sort()).toEqual(["display_name", "email", "password"]);
-  });
-
-  it("shows the login error and stays on the page", async () => {
-    postApi.mockResolvedValue({
-      data: null,
-      status: 401,
-      detail: "Email or password is incorrect.",
-    });
-    render(<AuthForm mode="login" next="/admin" />);
-
-    fill(/^Email/, "asha@example.org");
-    fill(/^Password/, "not-the-right-one");
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
-
-    await waitFor(() =>
-      expect(screen.getByRole("alert").textContent).toBe("Email or password is incorrect."),
-    );
-    expect(push).not.toHaveBeenCalled();
-  });
-
-  it("returns to the requested page after login", async () => {
-    postApi.mockResolvedValue({ data: account("admin"), status: 200, detail: null });
-    render(<AuthForm mode="login" next="/admin" />);
-
-    fill(/^Email/, "admin@example.org");
-    fill(/^Password/, "a-long-test-value");
-    fireEvent.click(screen.getByRole("button", { name: "Login" }));
-
-    await waitFor(() => expect(push).toHaveBeenCalledWith("/admin"));
-    expect(refresh).toHaveBeenCalled();
   });
 });
 

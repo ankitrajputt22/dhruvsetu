@@ -33,3 +33,23 @@ export function safeNextPath(value: string | null | undefined): string {
   }
   return value;
 }
+
+// After signing up, the welcome page says what was asked for. The note is kept
+// for this browser tab only and is tied to the new account.
+const SIGNUP_NOTE_KEY = "dhruvsetu.signup";
+
+export function rememberSignup(userId: string, accountType: string): void {
+  try {
+    window.sessionStorage.setItem(SIGNUP_NOTE_KEY, `${userId}:${accountType}`);
+  } catch {
+    // Without storage the welcome page simply shows its general message.
+  }
+}
+
+export function signedUpAsResearcher(userId: string): boolean {
+  try {
+    return window.sessionStorage.getItem(SIGNUP_NOTE_KEY) === `${userId}:researcher`;
+  } catch {
+    return false;
+  }
+}
