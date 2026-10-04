@@ -226,7 +226,7 @@ def test_session_cannot_see_the_host(session_id) -> None:
         "print(sorted(os.listdir('/data')))\n"
         "print(os.getuid())\n"
         "print(os.path.exists('/Users'), os.path.exists('/var/run/docker.sock'))\n"
-        "secret_words = ('MYSQL', 'PASSWORD', 'OPENAI', 'ANTHROPIC', 'API_KEY')\n"
+        "secret_words = ('MYSQL', 'PASSWORD', 'OPENAI', 'OPENROUTER', 'ANTHROPIC', 'API_KEY')\n"
         "print(sorted(name for name in os.environ if any(word in name for word in secret_words)))",
     )
 

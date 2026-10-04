@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.assistant.service import (
     AssistantNotConfigured,
     AssistantProviderError,
+    AssistantRateLimited,
     AssistantRetrievalError,
     AssistantTimeout,
     answer_question,
@@ -373,6 +374,11 @@ def ask_assistant(
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="The AI assistant took too long to answer. Please try again.",
+        ) from error
+    except AssistantRateLimited as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The AI assistant is busy right now. Please try again in a few minutes.",
         ) from error
     except AssistantProviderError as error:
         raise HTTPException(
