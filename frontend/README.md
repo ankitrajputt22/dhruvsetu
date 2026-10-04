@@ -1,7 +1,8 @@
 # DhruvSetu frontend
 
 This folder contains the DhruvSetu web interface. It uses Next.js, React,
-TypeScript, and Tailwind CSS.
+TypeScript, and Tailwind CSS. For a server, see
+[DEPLOYMENT.md](../DEPLOYMENT.md) and the `Dockerfile` in this folder.
 
 ## Run locally
 
