@@ -41,6 +41,7 @@ class SearchResult(ApiSchema):
 class InstitutionSummary(ApiSchema):
     id: str
     name: str
+    website: str | None = None
 
 
 class ScientistSummary(ApiSchema):
@@ -48,6 +49,9 @@ class ScientistSummary(ApiSchema):
     name: str
     research_area: str | None
     institution: InstitutionSummary | None
+    designation: str | None = None
+    # The official page the profile details come from.
+    profile_url: str | None = None
 
 
 class ScientistDetail(ScientistSummary):
@@ -82,6 +86,7 @@ class ExpeditionSummary(ApiSchema):
     summary: str | None
     start_date: date | None
     end_date: date | None
+    source_url: str | None = None
     verification_status: str
     is_demo_data: bool
 
@@ -89,6 +94,8 @@ class ExpeditionSummary(ApiSchema):
 class PublicationSummary(ApiSchema):
     id: str
     title: str
+    authors: str | None = None
+    journal: str | None = None
     publication_year: int | None
     doi: str | None
     source_url: str | None
@@ -167,6 +174,7 @@ class MapStation(ApiSchema):
     id: str
     name: str
     description: str | None
+    source_url: str | None = None
     verification_status: str
     is_demo_data: bool
 

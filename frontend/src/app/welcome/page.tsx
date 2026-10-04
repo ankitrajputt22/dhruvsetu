@@ -6,6 +6,7 @@ import { AuthLayout } from "@/components/auth-layout";
 import { RequestStatusBadge } from "@/components/request-status";
 import { accountTypeLabels, safeNextPath, userName } from "@/lib/auth";
 import { getApiAsUser, getCurrentUser } from "@/lib/auth-server";
+import { isLiteMode } from "@/lib/lite-mode-server";
 import type { ResearcherAccess } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -30,6 +31,7 @@ export default async function WelcomePage({
 
   return (
     <AuthLayout
+      lite={await isLiteMode()}
       subtitle={`You are signed in as ${userName(user)}.`}
       title="Your account is ready"
     >

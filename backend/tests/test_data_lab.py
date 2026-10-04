@@ -15,7 +15,8 @@ from app.datasets import files
 from app.datasets.files import DATASET_STORE, attach_dataset_file
 from app.main import app
 from app.models import Dataset
-from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS, seed_demo_data
+from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS
+from demo_data import seed_demo_data
 from conftest import create_test_user, delete_test_users, log_in
 
 client = TestClient(app)

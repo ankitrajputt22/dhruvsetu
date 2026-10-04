@@ -48,6 +48,7 @@ const locations: MapLocation[] = [
         id: "station",
         name: "Bharati",
         description: null,
+        source_url: "https://ncpor.res.in/antarcticas/display/377-bharati",
         verification_status: "uploaded",
         is_demo_data: false,
       },

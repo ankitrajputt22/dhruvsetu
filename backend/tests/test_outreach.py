@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
-from app.ingestion.seed_demo import seed_demo_documents
+from demo_data import seed_demo_documents
 from app.main import app
 from app.models import Dataset, Expedition, ResearchTopic
 from app.outreach.templates import SOCIAL_POST_LIMIT

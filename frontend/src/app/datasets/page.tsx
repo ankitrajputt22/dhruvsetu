@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { DemoLabel } from "@/components/demo-label";
@@ -12,7 +11,6 @@ import {
   verificationStatuses,
 } from "@/components/verification-badge";
 import { getApi } from "@/lib/api";
-import { isLiteMode } from "@/lib/lite-mode-server";
 import { formatDate } from "@/lib/format";
 import type { DatasetFilters, DatasetListItem } from "@/lib/types";
 
@@ -30,8 +28,6 @@ export default async function DatasetsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const parameters = await searchParams;
-  // In Lite Mode the card images are left out, so they are never requested.
-  const lite = await isLiteMode();
   const filters = (await getApi<DatasetFilters>("/api/datasets/filters")).data;
 
   // Only values the backend offers are passed on as filters.
@@ -67,8 +63,6 @@ export default async function DatasetsPage({
         eyebrow="Data repository"
         title="Datasets"
         description="Explore scientific dataset records connected to India's polar research."
-        image="/images/datasets/glacier.jpg"
-        imageAlt="Glacier meeting the polar sea"
       />
 
       <div className="mx-auto max-w-7xl px-6 py-12 lg:px-8 lg:py-16">
@@ -205,21 +199,9 @@ export default async function DatasetsPage({
                   : ""}
               </p>
               <ul className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                {result.data.map((dataset, index) => (
+                {result.data.map((dataset) => (
                   <li key={dataset.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
                     <article className="flex h-full flex-col">
-                      {!lite && (
-                        <div className="relative aspect-[16/7] bg-slate-200">
-                          <Image
-                            alt=""
-                            className="object-cover"
-                            fill
-                            sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw"
-                            src="/images/datasets/glacier.jpg"
-                            style={{ objectPosition: `${45 + (index % 5) * 10}% center` }}
-                          />
-                        </div>
-                      )}
                       <div className="flex flex-1 flex-col p-5">
                         <div className="flex items-start justify-between gap-3">
                           <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] text-sky-800">

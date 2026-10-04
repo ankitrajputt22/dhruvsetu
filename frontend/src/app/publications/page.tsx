@@ -14,7 +14,7 @@ export default async function PublicationsPage() {
       <PageHeading
         eyebrow="Knowledge repository"
         title="Publications"
-        description="Review publication records connected to polar research and expeditions."
+        description="Peer-reviewed papers on India's polar research, each with its authors, journal and DOI."
       />
 
       <div className="mt-8">
@@ -43,6 +43,16 @@ export default async function PublicationsPage() {
                         <h2 className="mt-2 text-xl font-semibold text-slate-950">
                           {publication.title}
                         </h2>
+                        {publication.authors && (
+                          <p className="mt-2 text-sm leading-6 text-slate-700">
+                            {publication.authors}
+                          </p>
+                        )}
+                        {publication.journal && (
+                          <p className="mt-1 text-sm italic text-slate-600">
+                            {publication.journal}
+                          </p>
+                        )}
                       </div>
                       {publication.is_demo_data && <DemoLabel />}
                     </div>

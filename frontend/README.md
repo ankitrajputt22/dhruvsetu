@@ -37,7 +37,7 @@ npm test
 npm run build
 ```
 
-`npm test` runs the component tests in `src/**/*.test.tsx` with Vitest.
+`npm test` runs the tests in `src/**/*.test.{ts,tsx}` with Vitest.
 
 ## Login and roles
 
@@ -118,6 +118,45 @@ How it fits together:
 Accounts, the admin and researcher setup command, and the security limits are
 described in the backend README under "Accounts and roles".
 
+## Images
+
+Every photograph is a file in `public/images`. None is loaded from another
+website, and `next.config.ts` allows no remote image.
+
+| Place | Photograph | Licence |
+|---|---|---|
+| Home page hero | Mountains and glaciers near the Larsen C ice shelf (NASA Operation IceBridge, 2017) | CC BY 2.0 |
+| Sign-in, Create Account and welcome panel | Antarctic mountains near the Getz Ice Shelf (NASA / Christy Hansen, 2012) | Public domain |
+| Home page, "India in the Polar Regions"; Antarctic expedition pages | Maitri station (Prakash khatarkar) | CC BY-SA 4.0 |
+| Antarctic expedition cards | Aerial view of Maitri, 2005 (Government of India, through PIB) | GODL-India |
+| Arctic expedition cards and pages | Ny-Ålesund seen from Kongsfjorden, 2012 (Bjoertvedt) | CC BY-SA 3.0 |
+| Arctic expedition cards | Shore of Kongsfjorden, 2013 (Rob Oo) | CC BY 2.0 |
+| Expeditions page header | Schirmacher Hills, 1983 (Pavan Nair) | CC BY-SA 4.0 |
+
+Rules:
+
+- An image is added only when its own source page states a licence that
+  permits reuse. A picture that is merely visible on a website is not used.
+  This includes the NCPOR website, which is a source of facts only.
+- Each image is listed in two places that must agree:
+  `public/images/ATTRIBUTIONS.md`, the record to read, and `src/lib/images.ts`,
+  which holds the path, alt text, caption, credit, licence and source page that
+  the pages use. `src/lib/images.test.tsx` fails when a file in the folder is
+  not listed, when a listed file is missing, or when the two disagree.
+- Credits are shown on the page `/image-credits`, linked from the footer, and
+  beside the larger photographs.
+- Alt text says only what the photograph shows. Expedition photographs show the
+  region or a station, not the expedition itself, and their captions say so.
+- No portrait of a scientist is used. Profiles show initials.
+- Datasets, publications, documents, search, the Data Lab and the admin pages
+  have no decorative photograph. There is no licensed photograph of Bharati or
+  of the Himadri building, so none is shown.
+- Images are resized and compressed before they are added. `next/image` then
+  serves a size that fits the screen. Only the homepage hero and a page's main
+  banner load with priority.
+- A page never depends on a photograph. Each image area has a plain background
+  behind it, and Lite Mode leaves the photographs out.
+
 ## Lite Mode
 
 Lite Mode makes DhruvSetu usable on slow or expensive connections. It is
@@ -126,9 +165,10 @@ pages and links as normal mode.
 
 What it does:
 
-- Decorative images are not sent at all: the homepage hero and station photo,
-  page hero backgrounds, and the photos on expedition and dataset cards and on
-  the expedition page. The text, counts and search box stay.
+- Photographs are not sent at all: the homepage hero and station photo, the
+  Expeditions page header, the photos on expedition cards and on the expedition
+  page, and the photo in the sign-in panel. The text, counts
+  and search box stay.
 - The Polar Map page does not load the map library or any map tiles. It shows
   the same locations as text: name, region, coordinates, station, verification
   status and related expeditions.

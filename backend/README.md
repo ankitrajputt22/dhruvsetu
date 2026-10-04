@@ -355,21 +355,61 @@ their real verification status and demo flag on the source card.
 covers the request rules, the decisions, session ending, the upload checks and
 the verification of a submission.
 
-## Demo data
+## Real starter data
 
-Add the small prototype dataset after migrations are current:
+The repository starts with real, sourced records about India's polar research.
+Add them after migrations are current, then rebuild the search index:
 
 ```bash
 python -m app.seed
+python -m app.search.build_index
 ```
 
-The seed is safe to run again. It keeps the same demo records and does not
-delete other data. Seeded demo content is clearly marked as demo or prototype
-data and must not be treated as real scientific information.
+What the seed adds:
 
-The seed also adds three real station locations (Bharati, Maitri and Himadri)
-with their published NCPOR coordinates. They are not demo data and are not
-linked to the demo expeditions. See "Polar Map" below for the sources.
+| Records | Count | Main sources |
+|---|---|---|
+| Institutions | 3 | NCPOR, MoES, IITM |
+| Research stations | 3 | NCPOR station pages (Maitri, Bharati, Himadri) |
+| Field sites | 2 | NCPOR IndARC page; Dey et al. (2026) |
+| Expeditions | 4 | Press Information Bureau releases; NCPOR Arctic expedition reports |
+| Reports | 2 | NCPOR Arctic expedition reports (linked, not copied) |
+| Scientists | 13 | NCPOR staff profiles; ORCID |
+| Publications | 7 | Open-access journal papers, checked against Crossref |
+| Datasets | 4 | NCPOR Polar Data Centre; Zenodo (two with a data file) |
+| Source documents | 9 | Five CC BY papers and four PIB press releases |
+| Research topics | 8 | DhruvSetu's own grouping |
+| Media records | 4 | Wikimedia Commons file pages |
+
+Every source, the fields taken from it and its reuse terms are listed in
+[`data/REAL_DATA_SOURCES.md`](data/REAL_DATA_SOURCES.md). The records
+themselves are in `app/seed.py`.
+
+Rules of the seed:
+
+- **Nothing is invented.** A fact or a link between two records is stored only
+  when a listed source states it. A field with no source stays empty.
+- **A real source is not a verified record.** Every seeded record starts as
+  `uploaded` and is never marked as demo data. An admin marks it Reviewed and
+  Verified at `/admin`. Running the seed again keeps the status an admin gave.
+- **It is safe to run again.** Records have fixed IDs, so nothing is added
+  twice. Sourced values are put back if they were changed. A document already
+  stored is skipped, because its file hash is known.
+- **It leaves people's data alone.** Accounts, sessions, researcher requests,
+  researcher submissions and the verification history are never touched.
+- **It removes the old synthetic records.** Earlier versions seeded demo
+  expeditions, scientists, publications, datasets and documents. The seed
+  deletes exactly those records, found by their fixed IDs, and nothing else.
+- **Files are kept only when their licence allows it.** Open-access papers
+  (CC BY) and PIB press releases are stored in `data/documents`. NCPOR reports
+  are linked, not copied, because the NCPOR website is "All Rights Reserved".
+- **Scientists are records, not accounts.** No login account is created in a
+  scientist's name, and no portrait is stored.
+
+The `is_demo_data` flag and the Demo Data label still exist, and a record with
+the flag is still labelled everywhere. The starter data holds no such record.
+The tests create demo records for a test run and remove them after it (see
+`tests/demo_data.py` and `tests/conftest.py`).
 
 ## Semantic search
 
@@ -404,11 +444,10 @@ python -m app.ingestion.ingest /path/to/source.pdf \
   --report-id "existing-report-id"
 ```
 
-Add the three small prototype documents used by the project:
-
-```bash
-python -m app.ingestion.seed_demo
-```
+`python -m app.seed` ingests the nine real source documents in
+`data/documents` in the same way: five open-access papers as PDF, with page
+numbers, and four press releases as text. Each keeps its source type, original
+link, publication date and its link to a publication or an expedition.
 
 Rebuild the local semantic index after ingesting documents so their chunks are
 available to source retrieval:
@@ -417,8 +456,14 @@ available to source retrieval:
 python -m app.search.build_index
 ```
 
-The prototype does not use OCR, accept public uploads, call an LLM, or generate
-answers. Source retrieval returns original text chunks for later RAG work.
+Ingestion does not use OCR. A PDF needs readable text, and a scan is rejected.
+
+Rules for a document that the assistant may quote:
+
+- The file is stored here only when its licence allows redistribution, and the
+  licence is written down in `data/REAL_DATA_SOURCES.md`.
+- The file is stored unchanged, with a link to where it was published.
+- A document starts as `uploaded`. The source card always shows its real status.
 
 ## Outreach Studio
 
@@ -447,8 +492,11 @@ How drafts are built:
   from the fixed template wording and plain meanings of the record types.
 - Document drafts use catalogue details only. The stored document text is not
   read or shown.
-- A demo record is marked `Based on Demo / Prototype Data` in the draft, and a
-  record that is not Verified carries a notice. Neither blocks the draft.
+- A record that is not Verified carries a notice in the draft, also when it
+  comes from a published source. A record flagged as demo data is marked
+  `Based on Demo / Prototype Data`. The starter data holds no demo record, so
+  that mark no longer appears for it. Neither notice blocks the draft.
+- The draft ends with the record's original source link when it has one.
 - "Why it matters" appears in a news brief only when the record is not demo
   data and has research topics with stored descriptions.
 
@@ -573,14 +621,14 @@ topics, datasets and documents connected through those expeditions.
   locations keep their coordinates as text and are marked `mappable: false`.
 
 The frontend map uses Leaflet with OpenStreetMap standard tiles. No API key is
-needed. The demo locations have no coordinates and have no markers.
+needed. A location without coordinates has no marker.
 
-### Station coordinates
+### Station and field-site coordinates
 
-`python -m app.seed` adds three real station locations. Each coordinate is the
-value published by the National Centre for Polar and Ocean Research (NCPOR),
-converted to decimal degrees and rounded to six places. No coordinate is
-estimated, and the published form is the limit of its precision.
+`python -m app.seed` adds three station locations and two field sites. Each
+coordinate is the value its source publishes, converted to decimal degrees and
+rounded to six places. No coordinate is estimated, and the published form is
+the limit of its precision.
 
 | Station | Published coordinate | Stored latitude | Stored longitude | Source |
 |---|---|---|---|---|
@@ -588,14 +636,18 @@ estimated, and the published form is the limit of its precision.
 | Maitri | 70°45′52″ S, 11°44′03″ E | -70.764444 | 11.734167 | NCPOR Maitri station page |
 | Himadri | 78°55′ N, 11°56′ E | 78.916667 | 11.933333 | NCPOR Arctic data portal (Himadri) |
 
+| Kongsfjorden (IndARC mooring site) | 78°56′ N, 12° E | 78.933333 | 12.000000 | NCPOR IndARC page |
+| Djupranen Ice Rise | 70.18° S, 9.18° E | -70.180000 | 9.180000 | Dey et al. (2026), The Cryosphere |
+
 Some NCPOR data pages list slightly different coordinates for Maitri. This
 project uses the NCPOR Maitri station page values only, so that values from
 different pages are never mixed.
 
-The source is also written in each location's description. The locations table
-has no source URL column, so no URL is stored. Running the seed again puts
-these coordinates back to the published values. It does not change a station's
-verification status, which starts as `uploaded`.
+The source is written in each location's description, and each station record
+stores the link to its NCPOR page (`source_url`), which the map shows as
+"Open Original Source". Running the seed again puts these coordinates back to
+the published values. It does not change a station's verification status,
+which starts as `uploaded`.
 
 ## Datasets
 
@@ -624,9 +676,25 @@ Files larger than 5 MB are not previewed, and statistics use at most the first
 5000 rows. The limits are at the top of `app/datasets/preview.py`. Column types
 and statistics are calculated from the file and are not official metadata.
 
-The seed adds one small file, `demo-prototype-preview-sample.csv`, to show the
-preview. Its values are placeholders marked `Demo / Prototype Data`, not
-measurements. Run `python -m app.seed` and rebuild the semantic index to add it.
+### Real datasets and their provenance
+
+The seed adds four dataset records. Two have a data file in `data/datasets`:
+
+| Dataset | File | Size | Source |
+|---|---|---|---|
+| Maud Rise Polynya index and ice core proxy records, 1774-2016 | `maud-rise-polynya-ice-core-dey-2026.csv` | 243 rows, 7 columns | NCPOR Polar Data Centre, data of Dey et al. (2026) |
+| Particulate organic matter composition in Kongsfjorden | `kongsfjorden-particulate-organic-matter-jagtap-2026.csv` | 12 rows, 92 columns | Zenodo, CC BY 4.0 |
+
+The other two are metadata only. They describe data held by NCPOR and link to
+it, and say that DhruvSetu holds no copy.
+
+Each file was converted from the source Excel workbook to CSV so that it can be
+previewed and opened in the Data Lab. Every row and column is kept and no value
+was changed. `data/REAL_DATA_SOURCES.md` describes the conversion, and the
+description of each dataset names its authors and source.
+
+The preview shows a value as the file has it: a year is `2016`, and `0.14452`
+keeps every digit. Only calculated values, such as a mean, are rounded.
 
 ## Sources and verification
 
@@ -640,7 +708,11 @@ Verification status is one of:
 
 - `uploaded` - added to the repository but not yet reviewed (the default)
 - `reviewed` - checked by a person
-- `verified` - source details and content confirmed for the prototype
+- `verified` - source details and content confirmed by an admin
+
+The status says how far DhruvSetu has checked a record. It does not say where
+the record comes from. A paper from a journal or a dataset from a data centre
+is real from the start, and still begins as `uploaded` here.
 
 Set the status when ingesting a document. Ingestion never marks a document as
 reviewed or verified on its own.
@@ -767,14 +839,18 @@ The automated tests use a fake provider and never call OpenRouter:
 pytest tests/test_assistant.py
 ```
 
-To try the real model, start the API with a key in `.env` and ask something
-the demo documents cover:
+To try the real model, start the API with a key in `.env`, make sure the seed
+and the index build have been run, and ask something the source documents
+cover:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/assistant/ask \
   -H "Content-Type: application/json" \
-  -d '{"question": "What does the sea ice observation plan record?"}'
+  -d '{"question": "What does the repository say about Antarctic climate research?"}'
 ```
+
+The answer should name its sources by number, and each source card should show
+a real title, its page, its original link and its verification status.
 
 Then ask `What is the capital of France?`. It should return the "not enough
 evidence" sentence at once, without using an OpenRouter request. The frontend

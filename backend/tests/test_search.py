@@ -2,7 +2,8 @@ from fastapi.testclient import TestClient
 
 from app.database import SessionLocal
 from app.main import app
-from app.seed import DEMO_IDS, seed_demo_data
+from app.seed import DEMO_IDS
+from demo_data import seed_demo_data
 
 client = TestClient(app)
 

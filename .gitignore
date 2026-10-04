@@ -1,10 +1,20 @@
 .DS_Store
 .env
 backend/.cache/
+backend/backups/
 backend/data/semantic_search/
 backend/data/documents/*
-!backend/data/documents/demo-antarctic-climate.txt
-!backend/data/documents/demo-polar-biodiversity.txt
-!backend/data/documents/demo-sea-ice-observations.txt
+# Real source documents that may be redistributed (see backend/data/REAL_DATA_SOURCES.md).
+!backend/data/documents/dey-2026-the-cryosphere-20-4117.pdf
+!backend/data/documents/goel-2026-the-cryosphere-20-1363.pdf
+!backend/data/documents/jagtap-2026-biogeosciences-23-4227.pdf
+!backend/data/documents/mahajan-2021-acp-21-11829.pdf
+!backend/data/documents/mahalinganathan-2012-the-cryosphere-6-505.pdf
+!backend/data/documents/pib-2021-11-15-41st-scientific-expedition-to-antarctica.txt
+!backend/data/documents/pib-2023-12-18-first-winter-arctic-expedition.txt
+!backend/data/documents/pib-2024-01-06-43rd-antarctic-expedition-voyage.txt
+!backend/data/documents/pib-2025-02-13-scientific-studies-in-the-arctic.txt
 backend/data/datasets/*
-!backend/data/datasets/demo-prototype-preview-sample.csv
+# Real datasets that may be redistributed (see backend/data/REAL_DATA_SOURCES.md).
+!backend/data/datasets/kongsfjorden-particulate-organic-matter-jagtap-2026.csv
+!backend/data/datasets/maud-rise-polynya-ice-core-dey-2026.csv

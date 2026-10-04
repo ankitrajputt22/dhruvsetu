@@ -4,10 +4,12 @@ export function OriginalSourceLink({
   url,
   title,
   className = "text-sm",
+  label = "Open Original Source",
 }: {
   url: string | null;
   title: string;
   className?: string;
+  label?: string;
 }) {
   const safeUrl = safeExternalUrl(url);
   if (safeUrl === null) {
@@ -21,7 +23,7 @@ export function OriginalSourceLink({
       rel="noopener noreferrer"
       target="_blank"
     >
-      Open Original Source
+      {label}
       <span className="sr-only"> for {title} (opens in a new tab)</span>
       <span aria-hidden="true">↗</span>
     </a>

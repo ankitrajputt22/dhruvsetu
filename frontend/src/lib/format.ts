@@ -15,6 +15,13 @@ export function formatDateRange(start: string | null, end: string | null): strin
   if (start === null && end === null) {
     return "Dates not listed";
   }
+  // Some sources give only the day an expedition began.
+  if (end === null) {
+    return `From ${formatDate(start)}`;
+  }
+  if (start === null) {
+    return `Until ${formatDate(end)}`;
+  }
 
   return `${formatDate(start)} – ${formatDate(end)}`;
 }
@@ -60,6 +67,23 @@ const numberFormat = new Intl.NumberFormat("en", { maximumFractionDigits: 4 });
 
 export function formatNumber(value: number): string {
   return numberFormat.format(value);
+}
+
+// A value from a data file, written the way the file has it: no rounding and
+// no thousands separator, so a year stays 2016 and 0.14452 keeps every digit.
+export function formatDataValue(value: number): string {
+  return String(value);
+}
+
+const plainNumberFormat = new Intl.NumberFormat("en", {
+  maximumFractionDigits: 4,
+  useGrouping: false,
+});
+
+// A rounded value that sits beside file values, such as a mean or an axis
+// tick. It has no thousands separator, so it reads like the values around it.
+export function formatPlainNumber(value: number): string {
+  return plainNumberFormat.format(value);
 }
 
 export function formatCoordinates(

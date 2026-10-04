@@ -152,7 +152,7 @@ def _expedition(db: Session, record_id: str) -> OutreachSource | None:
         summary=_clean(record.summary),
         verification_status=record.verification_status,
         is_demo_data=record.is_demo_data,
-        source_url=None,
+        source_url=record.source_url,
         href=f"/expeditions/{record.id}",
         facts=facts,
         topics=_topics(record.research_topics),
@@ -177,6 +177,8 @@ def _publication(db: Session, record_id: str) -> OutreachSource | None:
         return None
 
     facts: list[Fact] = []
+    _add(facts, "Authors", record.authors)
+    _add(facts, "Journal", record.journal)
     _add(facts, "Year", record.publication_year)
     _add(facts, "DOI", record.doi)
     _add(facts, "Scientists", _names(record.scientists))

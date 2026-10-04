@@ -69,7 +69,7 @@ export default async function DatasetDetailPage({
             <h1 className="mt-3 break-words text-3xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-4xl">
               {dataset.title}
             </h1>
-            <p className="mt-4 max-w-3xl leading-7 text-slate-600">
+            <p className="mt-4 max-w-3xl break-words leading-7 text-slate-600">
               {dataset.description ?? "No description is available."}
             </p>
           </div>

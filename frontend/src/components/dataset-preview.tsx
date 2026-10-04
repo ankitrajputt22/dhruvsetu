@@ -5,7 +5,7 @@ import { useEffect, useId, useState } from "react";
 import { type ChartPoint, DatasetChart } from "@/components/dataset-chart";
 import { DataMessage } from "@/components/page-heading";
 import { getApi } from "@/lib/api";
-import { formatNumber } from "@/lib/format";
+import { formatDataValue, formatNumber, formatPlainNumber } from "@/lib/format";
 import type { DatasetCell, DatasetPreview } from "@/lib/types";
 
 const typeLabels = { number: "Number", text: "Text", empty: "Empty" };
@@ -13,7 +13,15 @@ const typeLabels = { number: "Number", text: "Text", empty: "Empty" };
 // The table scroll boxes are "relative" so screen-reader-only labels inside
 // wide tables stay clipped and cannot make the whole page scroll sideways.
 
-function Cell({ value }: { value: DatasetCell }) {
+// "exact" is for values taken from the file, "rounded" for calculated ones,
+// and "count" for how many there are.
+function Cell({
+  value,
+  as = "exact",
+}: {
+  value: DatasetCell;
+  as?: "exact" | "rounded" | "count";
+}) {
   if (value === null) {
     return (
       <>
@@ -22,7 +30,13 @@ function Cell({ value }: { value: DatasetCell }) {
       </>
     );
   }
-  return <>{typeof value === "number" ? formatNumber(value) : value}</>;
+  if (typeof value !== "number") {
+    return <>{value}</>;
+  }
+  if (as === "count") {
+    return <>{formatNumber(value)}</>;
+  }
+  return <>{as === "exact" ? formatDataValue(value) : formatPlainNumber(value)}</>;
 }
 
 export function DatasetPreviewPanel({ datasetId }: { datasetId: string }) {
@@ -153,7 +167,10 @@ export function DatasetPreviewPanel({ datasetId }: { datasetId: string }) {
                   <td className="px-3 py-2">{typeLabels[column.type] ?? column.type}</td>
                   {(["count", "minimum", "maximum", "mean"] as const).map((key) => (
                     <td key={key} className="px-3 py-2 text-right tabular-nums">
-                      <Cell value={column.statistics ? column.statistics[key] : null} />
+                      <Cell
+                        as={key === "count" ? "count" : key === "mean" ? "rounded" : "exact"}
+                        value={column.statistics ? column.statistics[key] : null}
+                      />
                     </td>
                   ))}
                 </tr>

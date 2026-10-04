@@ -27,7 +27,7 @@ from app.database import Base
 
 
 # uploaded = added but not reviewed, reviewed = checked by a human,
-# verified = source details and content confirmed for the prototype.
+# verified = source details and content confirmed by an admin.
 VERIFICATION_STATUSES = ("uploaded", "reviewed", "verified")
 
 # The only application roles. Student, Teacher, Journalist and Public are
@@ -255,6 +255,9 @@ class Scientist(UUIDMixin, TimestampMixin, Base):
     )
     research_area: Mapped[str | None] = mapped_column(String(255))
     short_bio: Mapped[str | None] = mapped_column(Text)
+    designation: Mapped[str | None] = mapped_column(String(255))
+    # The official page the profile details were taken from.
+    profile_url: Mapped[str | None] = mapped_column(String(2048))
 
     institution: Mapped[Institution | None] = relationship(back_populates="scientists")
     expeditions: Mapped[list[Expedition]] = relationship(
@@ -273,6 +276,7 @@ class Expedition(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, Ba
     summary: Mapped[str | None] = mapped_column(Text)
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
 
     scientists: Mapped[list[Scientist]] = relationship(
         secondary=expedition_scientists, back_populates="expeditions"
@@ -323,6 +327,7 @@ class ResearchStation(UUIDMixin, VerificationMixin, TimestampMixin, Base):
         CHAR(36), ForeignKey("locations.id", ondelete="SET NULL")
     )
     description: Mapped[str | None] = mapped_column(Text)
+    source_url: Mapped[str | None] = mapped_column(String(2048))
 
     location: Mapped[Location | None] = relationship(back_populates="research_stations")
 
@@ -348,6 +353,9 @@ class Publication(UUIDMixin, VerificationMixin, DemoDataMixin, TimestampMixin, B
     __tablename__ = "publications"
 
     title: Mapped[str] = mapped_column(String(500), nullable=False)
+    # The authors as the publisher lists them, and the journal.
+    authors: Mapped[str | None] = mapped_column(Text)
+    journal: Mapped[str | None] = mapped_column(String(255))
     publication_year: Mapped[int | None] = mapped_column(Integer)
     doi: Mapped[str | None] = mapped_column(String(255), unique=True)
     source_url: Mapped[str | None] = mapped_column(String(2048))

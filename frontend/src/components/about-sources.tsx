@@ -25,8 +25,10 @@ export function AboutSources() {
         ))}
       </dl>
       <p className="mt-4 border-t border-slate-200 pt-4 text-xs leading-5 text-slate-500">
-        The Demo Data label marks prototype content. It is separate from the
-        verification status.
+        The status says how far DhruvSetu has checked a record, not where it
+        comes from. A record from a published source starts as Uploaded. A
+        Demo Data label, where one appears, marks content that is not real
+        scientific information.
       </p>
     </section>
   );

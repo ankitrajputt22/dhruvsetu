@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import delete
 
 from app.database import SessionLocal
-from app.ingestion.seed_demo import seed_demo_documents
+from demo_data import seed_demo_documents
 from app.main import app
 from app.models import Dataset, ResearchStation, VerificationChange
 from app.seed import STATION_IDS, seed_station_locations
@@ -220,7 +220,8 @@ def test_real_stations_wait_in_the_queue_with_their_source_note(client_as) -> No
     assert set(STATION_IDS["research_stations"].values()) <= {item["id"] for item in queue.json()}
     assert detail["title"] == "Bharati"
     assert detail["is_demo_data"] is False
-    assert detail["source_url"] is None
+    # The official page the station details come from.
+    assert detail["source_url"] == "https://ncpor.res.in/antarcticas/display/377-bharati"
     facts = {fact["label"]: fact["value"] for fact in detail["facts"]}
     assert facts["Location"] == "Bharati Station"
     assert facts["Stored coordinates"] == "-69.406833, 76.195333"

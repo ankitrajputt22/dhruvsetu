@@ -17,7 +17,8 @@ from app.data_lab.outputs import PNG_SIGNATURE
 from app.database import SessionLocal
 from app.datasets.files import DATASET_STORE
 from app.main import app
-from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS, seed_demo_data
+from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS
+from demo_data import seed_demo_data
 from conftest import create_test_user, delete_test_users, log_in
 
 client = TestClient(app)

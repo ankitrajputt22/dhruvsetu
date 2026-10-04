@@ -11,6 +11,22 @@ from app.database import SessionLocal
 from app.main import app
 from app.models import User, VerificationChange
 
+@pytest.fixture(scope="session", autouse=True)
+def demo_fixtures(tmp_path_factory):
+    """Demo records exist while the tests run, and are removed afterwards.
+
+    The real starter repository holds no demo records. Tests that cover the
+    Demo Data label and connected records use these temporary ones.
+    """
+    from demo_data import load_demo_fixtures, unload_demo_fixtures
+
+    load_demo_fixtures(tmp_path_factory.mktemp("demo-documents"))
+    try:
+        yield
+    finally:
+        unload_demo_fixtures()
+
+
 # Used only for accounts that tests create and delete again.
 TEST_PASSWORD = "test-only-password-1"
 _PASSWORD_HASH = hash_password(TEST_PASSWORD)

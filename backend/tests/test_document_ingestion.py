@@ -10,7 +10,7 @@ from sqlalchemy import func, select
 from app.database import SessionLocal
 from app.ingestion.extractors import DocumentExtractionError, extract_document
 from app.ingestion.retrieval import retrieve_source_chunks
-from app.ingestion.seed_demo import DEMO_DOCUMENTS, seed_demo_documents
+from demo_data import DEMO_DOCUMENTS, seed_demo_documents
 from app.ingestion.service import ingest_document
 from app.main import app
 from app.models import Document, DocumentChunk

@@ -117,6 +117,11 @@ def _match_reason(number: int) -> str:
     return "Also related to your question"
 
 
+def _record_source_url(record: object) -> str | None:
+    """The page a record comes from. For a scientist it is the official profile."""
+    return getattr(record, "source_url", None) or getattr(record, "profile_url", None)
+
+
 def _is_demo_name(name: str) -> bool:
     # Records without a demo flag are marked as demo data by their name.
     return name.startswith(("Demo ", "Prototype "))
@@ -174,7 +179,7 @@ def _to_search_results(
                     if href_template is not None
                     else None
                 ),
-                source_url=getattr(record, "source_url", None),
+                source_url=_record_source_url(record),
                 match_reason=(
                     "Matched title" if match_rank == 0 else "Matched description"
                 ),
@@ -275,7 +280,7 @@ def _semantic_results(
                     if href_template is not None
                     else None
                 ),
-                source_url=getattr(record, "source_url", None),
+                source_url=_record_source_url(record),
                 match_reason="Related to your search",
                 search_mode=SearchMode.semantic,
             )
@@ -557,6 +562,7 @@ def _map_location(location: Location, documents: list[Document]) -> MapLocation:
                 id=station.id,
                 name=station.name,
                 description=station.description,
+                source_url=station.source_url,
                 verification_status=station.verification_status,
                 is_demo_data=_is_demo_name(station.name),
             )

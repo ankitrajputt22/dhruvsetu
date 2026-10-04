@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 
 from app.database import SessionLocal
 from app.geo import fits_web_map, polar_region, valid_coordinates
-from app.ingestion.seed_demo import seed_demo_documents
+from demo_data import seed_demo_documents
 from app.main import app
 from app.models import Expedition, Location, ResearchStation
 from app.seed import DEMO_IDS, STATION_IDS, STATION_LOCATIONS, seed_station_locations
@@ -118,6 +118,7 @@ def test_station_and_expedition_location_types() -> None:
             "id": DEMO_IDS["research_stations"]["coastal"],
             "name": "Demo Coastal Research Station",
             "description": "Prototype station record for platform testing.",
+            "source_url": None,
             "verification_status": "uploaded",
             "is_demo_data": True,
         }
@@ -317,12 +318,15 @@ def test_map_returns_station_coordinates_and_polar_regions() -> None:
         assert [item["id"] for item in location["stations"]] == [
             STATION_IDS["research_stations"][key]
         ]
-        # Real station metadata is not demo data and is not linked to the
+        # Real station metadata is not demo data and is never linked to the
         # demo expeditions.
         assert location["is_demo_data"] is False
         assert location["stations"][0]["is_demo_data"] is False
-        assert location["expedition_count"] == 0
-        assert location["expeditions"] == []
+        assert location["stations"][0]["source_url"].startswith("https://ncpor.res.in/")
+        assert all(not item["is_demo_data"] for item in location["expeditions"])
+        assert not {item["id"] for item in location["expeditions"]} & set(
+            DEMO_IDS["expeditions"].values()
+        )
 
     assert locations[STATION_IDS["locations"]["bharati"]]["name"] == "Bharati Station"
     assert locations[STATION_IDS["locations"]["himadri"]]["region"] == "Arctic"
