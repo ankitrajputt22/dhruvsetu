@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AuthCard, AuthForm } from "@/components/auth-form";
+import { RegisterForm } from "@/components/auth-form";
+import { AuthLayout } from "@/components/auth-layout";
 import { safeNextPath } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/auth-server";
 
 export const metadata: Metadata = {
-  title: "Create an account",
+  title: "Create Account",
 };
 
 export default async function RegisterPage({
@@ -21,11 +22,11 @@ export default async function RegisterPage({
   }
 
   return (
-    <AuthCard
-      description="New accounts are standard user accounts. Research access is given by a DhruvSetu admin."
-      title="Create an account"
+    <AuthLayout
+      subtitle="Join India's polar science knowledge platform."
+      title="Create your DhruvSetu account"
     >
-      <AuthForm mode="register" next={next} />
-    </AuthCard>
+      <RegisterForm next={next} />
+    </AuthLayout>
   );
 }

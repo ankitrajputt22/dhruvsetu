@@ -88,7 +88,7 @@ Studio. They are not login roles and give no permissions.
 
 | Endpoint | Who | Notes |
 |---|---|---|
-| `POST /api/auth/register` | Anyone | Creates a `user` account and logs it in. A `role` field is rejected. |
+| `POST /api/auth/register` | Anyone | Creates a `user` account and logs it in. A `role` field is rejected. See "Signing up" below. |
 | `POST /api/auth/login` | Anyone | One error message for every failure, so it does not show which accounts exist. |
 | `POST /api/auth/logout` | Anyone | Ends the session and clears the cookie. |
 | `GET /api/auth/me` | Signed in | Returns only the id, email, display name and role. |
@@ -102,6 +102,48 @@ API makes the decision on every request.
 The checks are FastAPI dependencies in `app/auth/dependencies.py`:
 `get_current_user`, `require_user`, `require_role(...)`, `require_researcher`,
 `require_admin` and `verify_origin`. New protected routes should use these.
+
+### Signing up
+
+`POST /api/auth/register` takes an email, a password of 10 to 128 characters
+and a display name. It can also take an `account_type`:
+
+- `user` (the default) - a general account.
+- `researcher` - the person is asking for researcher access. The request must
+  come with a `researcher` object and a display name.
+
+```json
+{
+  "email": "person@example.org",
+  "password": "at least ten characters",
+  "display_name": "Full Name",
+  "account_type": "researcher",
+  "researcher": {
+    "institution": "Institution or organisation",
+    "research_area": "Glaciology",
+    "designation": "Optional",
+    "reason": "Why researcher access is needed",
+    "profile_url": "https://example.org/optional",
+    "acknowledged": true
+  }
+}
+```
+
+The account type is what the person asks for. It is not a role. Every account
+made here gets the `user` role, whichever type is chosen, and choosing
+`researcher` unlocks nothing: no Polar Data Lab and no admin area. `admin` is
+not an account type and is rejected, as is any `role` field.
+
+A researcher request is saved in the `researcher_access_requests` table (one
+row for the account: institution, research area, designation, reason, profile
+URL and the time). The profile URL must start with `http://` or `https://`,
+and `acknowledged` must be `true`. The password confirmation on the form is
+checked in the browser and is never sent.
+
+What is not built yet: there is no page or endpoint for an admin to see,
+approve or reject these requests, and the table has no status. For now an
+admin gives the researcher role by hand at `/admin/users`. The request and
+approval workflow is the next phase.
 
 ### Create local accounts
 
@@ -148,6 +190,8 @@ mistake. An admin can give or remove the researcher role at `/admin/users`
 - There is no login through another service (OAuth or single sign-on).
 - The failed-login limit is kept in the memory of one API process. It is reset
   when the API restarts and is not shared between several workers.
+- Researcher requests made at signup are saved but cannot be reviewed yet (see
+  "Signing up").
 - There is no page to disable or delete an account. The `is_active` column
   exists, and an inactive account cannot log in, but it is set in the database.
 - A changing request that has neither an `Origin` nor a `Referer` header is

@@ -14,7 +14,7 @@ from app.auth.dependencies import require_user, verify_origin
 from app.auth.passwords import hash_password, verify_password
 from app.auth.sessions import create_session, end_session
 from app.database import get_db
-from app.models import User
+from app.models import ResearcherAccessRequest, User
 from app.schemas import AuthLogin, AuthRegister, AuthUser
 
 logger = logging.getLogger(__name__)
@@ -81,6 +81,16 @@ def register(
         display_name=(payload.display_name or "").strip() or None,
         role="user",
     )
+    if payload.researcher is not None:
+        # The request is only saved. It changes nothing about what the
+        # account can do.
+        user.researcher_request = ResearcherAccessRequest(
+            institution=payload.researcher.institution,
+            research_area=payload.researcher.research_area,
+            designation=payload.researcher.designation,
+            reason=payload.researcher.reason,
+            profile_url=payload.researcher.profile_url,
+        )
     db.add(user)
     try:
         db.commit()

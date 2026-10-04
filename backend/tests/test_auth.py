@@ -11,7 +11,7 @@ from app.auth.passwords import hash_password, verify_password
 from app.auth.sessions import now
 from app.database import SessionLocal
 from app.main import app
-from app.models import User, UserSession
+from app.models import ResearcherAccessRequest, User, UserSession
 from conftest import TEST_PASSWORD, log_in
 
 LOGIN_FAILED = {"detail": "Email or password is incorrect."}
@@ -269,3 +269,161 @@ def test_only_json_bodies_are_accepted(make_user) -> None:
     assert as_text.status_code == 422
     assert as_form.status_code == 422
     assert config.SESSION_COOKIE not in client.cookies
+
+
+RESEARCHER_DETAILS = {
+    "institution": "Test Polar Institute",
+    "research_area": "Glaciology",
+    "designation": "Research student",
+    "reason": "To analyse the demo datasets in Polar Data Lab.",
+    "profile_url": "https://example.org/people/test-person",
+    "acknowledged": True,
+}
+
+
+def _researcher_signup(email: str, **changes) -> dict:
+    payload = {
+        "email": email,
+        "password": TEST_PASSWORD,
+        "display_name": "Test Researcher",
+        "account_type": "researcher",
+        "researcher": dict(RESEARCHER_DETAILS),
+    }
+    payload.update(changes)
+    return payload
+
+
+def _saved_request(email: str) -> ResearcherAccessRequest | None:
+    with SessionLocal() as session:
+        return session.scalar(
+            select(ResearcherAccessRequest).join(User).where(User.email == email)
+        )
+
+
+def test_researcher_signup_saves_the_request_but_gives_no_role(registered_emails) -> None:
+    email = _new_email()
+    registered_emails.append(email)
+    client = TestClient(app)
+
+    response = client.post("/api/auth/register", json=_researcher_signup(email))
+
+    assert response.status_code == 201
+    body = response.json()
+    # The answer is the same as for any signup: a normal user account.
+    assert set(body) == {"id", "email", "display_name", "role"}
+    assert body["role"] == "user"
+    assert client.get("/api/auth/me").json()["role"] == "user"
+
+    saved = _saved_request(email)
+    assert saved is not None
+    assert saved.user_id == body["id"]
+    assert saved.institution == "Test Polar Institute"
+    assert saved.research_area == "Glaciology"
+    assert saved.designation == "Research student"
+    assert saved.reason == "To analyse the demo datasets in Polar Data Lab."
+    assert saved.profile_url == "https://example.org/people/test-person"
+
+    # Asking for researcher access unlocks nothing.
+    lab = client.post("/api/data-lab/sessions", json={"dataset_id": "any"})
+    assert lab.status_code == 403
+    assert client.get("/api/admin/summary").status_code == 403
+    assert client.get("/api/admin/users").status_code == 403
+
+
+def test_general_signup_saves_no_researcher_request(registered_emails) -> None:
+    email = _new_email()
+    registered_emails.append(email)
+
+    response = TestClient(app).post(
+        "/api/auth/register",
+        json={
+            "email": email,
+            "password": TEST_PASSWORD,
+            "display_name": "Test Person",
+            "account_type": "user",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["role"] == "user"
+    assert _saved_request(email) is None
+
+
+def test_optional_researcher_details_can_be_left_empty(registered_emails) -> None:
+    email = _new_email()
+    registered_emails.append(email)
+    details = {**RESEARCHER_DETAILS, "designation": "  ", "profile_url": ""}
+
+    response = TestClient(app).post(
+        "/api/auth/register", json=_researcher_signup(email, researcher=details)
+    )
+
+    assert response.status_code == 201
+    saved = _saved_request(email)
+    assert saved.designation is None
+    assert saved.profile_url is None
+
+
+def _without(key: str) -> dict:
+    return {name: value for name, value in RESEARCHER_DETAILS.items() if name != key}
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        # The only account types are user and researcher.
+        {"account_type": "admin"},
+        {"account_type": "admin", "researcher": None},
+        # A role can never be sent, at any level.
+        {"role": "researcher"},
+        {"researcher": {**RESEARCHER_DETAILS, "role": "researcher"}},
+        # A researcher request needs its details and a name.
+        {"researcher": None},
+        {"display_name": "   "},
+        {"researcher": _without("institution")},
+        {"researcher": _without("research_area")},
+        {"researcher": _without("reason")},
+        {"researcher": {**RESEARCHER_DETAILS, "reason": "   "}},
+        {"researcher": _without("acknowledged")},
+        {"researcher": {**RESEARCHER_DETAILS, "acknowledged": False}},
+        {"researcher": {**RESEARCHER_DETAILS, "profile_url": "javascript:alert(1)"}},
+        {"researcher": {**RESEARCHER_DETAILS, "profile_url": "ftp://example.org/me"}},
+        {"researcher": {**RESEARCHER_DETAILS, "profile_url": "example.org/me"}},
+        # Researcher details do not belong to a general signup.
+        {"account_type": "user"},
+    ],
+)
+def test_invalid_account_type_requests_create_nothing(registered_emails, changes) -> None:
+    email = _new_email()
+    registered_emails.append(email)
+
+    response = TestClient(app).post(
+        "/api/auth/register", json=_researcher_signup(email, **changes)
+    )
+
+    assert response.status_code == 422
+    assert config.SESSION_COOKIE not in response.cookies
+    with SessionLocal() as session:
+        assert session.scalar(select(User.id).where(User.email == email)) is None
+    assert _saved_request(email) is None
+
+
+def test_deleting_an_account_removes_its_researcher_request(registered_emails) -> None:
+    email = _new_email()
+    registered_emails.append(email)
+    created = TestClient(app).post("/api/auth/register", json=_researcher_signup(email))
+    user_id = created.json()["id"]
+    assert _saved_request(email) is not None
+
+    with SessionLocal() as session:
+        session.execute(delete(User).where(User.id == user_id))
+        session.commit()
+
+    with SessionLocal() as session:
+        left = session.scalar(
+            select(ResearcherAccessRequest.id).where(
+                ResearcherAccessRequest.user_id == user_id
+            )
+        )
+    assert left is None
+

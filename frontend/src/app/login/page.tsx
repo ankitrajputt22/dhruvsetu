@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { AuthCard, AuthForm } from "@/components/auth-form";
+import { LoginForm } from "@/components/auth-form";
+import { AuthLayout } from "@/components/auth-layout";
 import { safeNextPath } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/auth-server";
 
 export const metadata: Metadata = {
-  title: "Login",
+  title: "Sign In",
 };
 
 export default async function LoginPage({
@@ -21,11 +22,8 @@ export default async function LoginPage({
   }
 
   return (
-    <AuthCard
-      description="The repository is open to everyone. Login is only needed for Polar Data Lab and the admin area."
-      title="Login"
-    >
-      <AuthForm mode="login" next={next} />
-    </AuthCard>
+    <AuthLayout subtitle="Sign in to continue to DhruvSetu." title="Welcome back">
+      <LoginForm next={next} />
+    </AuthLayout>
   );
 }

@@ -42,10 +42,33 @@ Studio audience settings, not roles.
 
 | Page | Who can use it |
 |---|---|
-| `/login`, `/register` | Anyone. Registration always creates a `user` account. |
+| `/login` | Anyone. Sign In with an email address and a password. There is no role choice: the role comes from the account. |
+| `/register` | Anyone. Create Account, as a General User or with a request for researcher access. It always creates a `user` account. |
+| `/welcome` | A signed-in account, straight after creating it. Shows the account's access and where to continue. |
 | `/data-lab` | `researcher` and `admin`. Others see "Polar Data Lab is available to research users." |
 | `/admin`, `/admin/records/...` | `admin`. Verification counts, the queue, and the review page. |
 | `/admin/users` | `admin`. Switches an account between `user` and `researcher`. |
+
+The Sign In and Create Account pages:
+
+- Both use `AuthLayout` (`src/components/auth-layout.tsx`): the DhruvSetu panel
+  beside the form on wide screens, and the form alone below 1024px.
+- The forms are `LoginForm` and `RegisterForm` in
+  `src/components/auth-form.tsx`. The checks are plain functions in
+  `src/lib/auth-validation.ts` and repeat the API's rules (a password of 10 to
+  128 characters, nothing stricter).
+- Every field has a label, problems are shown under the field and linked to it,
+  and the first field with a problem gets the focus. Each password has a
+  "Show password" / "Hide password" button. A form cannot be sent twice.
+- "I want to join as" offers General User and Researcher. Admin is never
+  offered. Choosing Researcher shows the researcher questions and the note
+  "Researcher access requires administrator approval. Your account will
+  initially have normal user access."
+- The password confirmation is checked in the browser and is not sent. No role
+  is ever sent. The researcher answers are saved by the API as a request, which
+  an admin cannot review yet (see the backend README, "Signing up").
+- A `?next=` address is kept across Sign In, Create Account and the welcome
+  page, so a person returns to where they were going.
 
 How it fits together:
 
