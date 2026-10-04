@@ -5,6 +5,7 @@ import { LoginForm } from "@/components/auth-form";
 import { AuthLayout } from "@/components/auth-layout";
 import { safeNextPath } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/auth-server";
+import { isLiteMode } from "@/lib/lite-mode-server";
 
 export const metadata: Metadata = {
   title: "Sign In",
@@ -22,7 +23,11 @@ export default async function LoginPage({
   }
 
   return (
-    <AuthLayout subtitle="Sign in to continue to DhruvSetu." title="Welcome back">
+    <AuthLayout
+      lite={await isLiteMode()}
+      subtitle="Sign in to continue to DhruvSetu."
+      title="Welcome back"
+    >
       <LoginForm next={next} />
     </AuthLayout>
   );

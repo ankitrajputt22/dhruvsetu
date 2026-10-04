@@ -27,7 +27,7 @@ export const verificationStatuses: Record<string, StatusStyle> = {
   },
   verified: {
     label: "Verified",
-    meaning: "Source details and content confirmed for this prototype.",
+    meaning: "Source details and content confirmed by a DhruvSetu admin.",
     className: "border-emerald-200 bg-emerald-50 text-emerald-900",
     icon: (
       <>

@@ -6,7 +6,8 @@ from app.data_lab import sessions
 from app.database import SessionLocal
 from app.main import app
 from app.models import User, UserSession
-from app.seed import DEMO_IDS, seed_demo_data
+from app.seed import DEMO_IDS
+from demo_data import seed_demo_data
 from conftest import TEST_PASSWORD, log_in
 
 PREVIEW_ID = DEMO_IDS["datasets"]["preview"]

@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { DemoLabel } from "@/components/demo-label";
 import { useLiteMode } from "@/components/lite-mode";
 import type { MapPoint } from "@/components/polar-map";
+import { OriginalSourceLink } from "@/components/source-link";
 import { VerificationBadge } from "@/components/verification-badge";
 import { formatCoordinates } from "@/lib/format";
 import { mapTypeLabels, markerSvg } from "@/lib/map-markers";
@@ -530,9 +531,14 @@ function LocationDetails({ location }: { location: MapLocation }) {
           {station.description && (
             <p className="mt-1 text-sm leading-6 text-slate-600">{station.description}</p>
           )}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
             <VerificationBadge status={station.verification_status} />
             {station.is_demo_data && <DemoLabel />}
+            <OriginalSourceLink
+              className="text-xs"
+              title={station.name}
+              url={station.source_url}
+            />
           </div>
         </div>
       ))}

@@ -11,9 +11,9 @@ import type { AssistantAnswer } from "@/lib/types";
 const MAX_QUESTION_LENGTH = 500;
 
 const suggestedQuestions = [
-  "What does the sea ice observation plan record?",
-  "Why can one observation not describe Antarctic climate?",
-  "What can affect which organisms are recorded in a field survey?",
+  "What does the ice core record show about the Maud Rise Polynya?",
+  "What did India's first winter Arctic expedition set out to study?",
+  "Where was iodine monoxide observed in Antarctica?",
 ];
 
 // Turns "Source 1" in the answer into a link to that source card. Only

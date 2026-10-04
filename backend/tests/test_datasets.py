@@ -8,7 +8,8 @@ from app.datasets import files, preview
 from app.datasets.files import DatasetFileError, attach_dataset_file
 from app.main import app
 from app.models import Dataset
-from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS, seed_demo_data
+from app.seed import DEMO_DATASET_FILE_NAME, DEMO_IDS
+from demo_data import seed_demo_data
 
 client = TestClient(app)
 

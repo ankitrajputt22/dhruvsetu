@@ -3,7 +3,8 @@ from sqlalchemy.orm import selectinload
 
 from app.database import SessionLocal
 from app.models import Dataset, Expedition, Location, MediaAsset, Publication, Report
-from app.seed import DEMO_COUNTS, DEMO_IDS, seed_demo_data
+from app.seed import DEMO_COUNTS, DEMO_IDS
+from demo_data import seed_demo_data
 
 
 def test_demo_seed_is_complete_and_idempotent() -> None:

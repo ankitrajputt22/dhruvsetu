@@ -22,8 +22,7 @@ export function VerificationSummary({
       {meaning && <p className="mt-3 text-sm leading-6 text-slate-600">{meaning}</p>}
       {isDemoData && (
         <p className="mt-3 border-t border-slate-200 pt-3 text-sm leading-6 text-slate-600">
-          This is demo data. It is prototype content, not real scientific
-          information.
+          This is demo data. It is not real scientific information.
         </p>
       )}
     </section>

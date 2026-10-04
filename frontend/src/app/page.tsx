@@ -7,6 +7,7 @@ import { ResourceLinkCard } from "@/components/resource-link-card";
 import { SearchForm } from "@/components/search-form";
 import { SectionHeading } from "@/components/section-heading";
 import { getApi } from "@/lib/api";
+import { photoCredit, siteImages } from "@/lib/images";
 import { isLiteMode } from "@/lib/lite-mode-server";
 import type {
   Dataset,
@@ -112,15 +113,20 @@ export default async function Home() {
       <section className="relative isolate min-h-[31rem] overflow-hidden bg-[#073554] text-white">
         {!lite && (
           <Image
-            alt="Polar research vessel in an Antarctic coastal landscape"
+            alt={siteImages.homeHero.alt}
             className="object-cover object-center"
             fill
             priority
             sizes="100vw"
-            src="/images/home/antarctica-hero.jpg"
+            src={siteImages.homeHero.src}
           />
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-[#031e34]/90 via-[#052f4f]/70 to-[#052f4f]/20" />
+        {!lite && (
+          <p className="absolute bottom-10 right-4 hidden text-[11px] text-white/75 sm:block lg:right-8">
+            {photoCredit(siteImages.homeHero)}
+          </p>
+        )}
         <div className="relative mx-auto flex min-h-[31rem] max-w-7xl items-center px-6 py-16 lg:px-8">
           <div className="max-w-3xl">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-100">
@@ -165,8 +171,9 @@ export default async function Home() {
                 India in the Polar Regions
               </h2>
               <p className="mt-4 max-w-xl leading-7 text-slate-600">
-                Explore connected records from polar expeditions, research
-                stations, field observations, and scientific work.
+                India works from Maitri and Bharati in Antarctica and from
+                Himadri in the Arctic. Explore the stations, the expeditions
+                and the research connected to them.
               </p>
               {mapLocations.data !== null && mapLocations.data.length > 0 && (
                 <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3">
@@ -195,15 +202,19 @@ export default async function Home() {
               </Link>
             </div>
             {!lite && (
-              <div className="relative min-h-72 bg-slate-200">
+              <figure className="relative min-h-72 bg-slate-200">
                 <Image
-                  alt="Bharati research station building in Antarctica"
+                  alt={siteImages.maitriStation.alt}
                   className="object-cover"
                   fill
                   sizes="(min-width: 1024px) 55vw, 100vw"
-                  src="/images/stations/bharati.jpg"
+                  src={siteImages.maitriStation.src}
                 />
-              </div>
+                <figcaption className="absolute inset-x-0 bottom-0 bg-[#031e34]/75 px-4 py-2 text-xs leading-5 text-white">
+                  {siteImages.maitriStation.caption}{" "}
+                  <span className="text-white/75">{photoCredit(siteImages.maitriStation)}</span>
+                </figcaption>
+              </figure>
             )}
           </div>
         </section>

@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-import { formatNumber } from "@/lib/format";
+import { formatDataValue, formatNumber, formatPlainNumber } from "@/lib/format";
 
 export type ChartPoint = { x: number | string; y: number };
 
@@ -40,8 +40,9 @@ function shorten(label: string): string {
   return label.length > 14 ? `${label.slice(0, 13)}…` : label;
 }
 
+// The value a point stands at, as the file has it (a year stays 2016).
 function label(value: number | string): string {
-  return typeof value === "number" ? formatNumber(value) : value;
+  return typeof value === "number" ? formatDataValue(value) : value;
 }
 
 // A single-series line or bar chart drawn as plain SVG.
@@ -132,7 +133,7 @@ export function DatasetChart({
       <svg
         aria-describedby={descriptionId}
         aria-label={`${kind === "line" ? "Line" : "Bar"} chart of ${yName} by ${xName}`}
-        className="block touch-pan-y rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
+        className="block max-w-full touch-pan-y rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sky-400"
         height={height}
         onBlur={() => setActive(null)}
         onKeyDown={(event) => {
@@ -185,7 +186,7 @@ export function DatasetChart({
                 x={xScale(tick)}
                 y={height - BOTTOM + 18}
               >
-                {formatNumber(tick)}
+                {formatPlainNumber(tick)}
               </text>
             ))
           : points.map(
@@ -280,7 +281,7 @@ export function DatasetChart({
           style={{ left: Math.min(width - 88, Math.max(88, xPosition(active))) }}
         >
           <p className="font-semibold text-slate-950">
-            {formatNumber(activePoint.y)}{" "}
+            {formatDataValue(activePoint.y)}{" "}
             <span className="font-normal text-slate-500">{shorten(yName)}</span>
           </p>
           <p className="mt-0.5 text-slate-600">
@@ -295,7 +296,7 @@ export function DatasetChart({
       </p>
       <p aria-live="polite" className="sr-only">
         {activePoint
-          ? `${xName} ${label(activePoint.x)}, ${yName} ${formatNumber(activePoint.y)}`
+          ? `${xName} ${label(activePoint.x)}, ${yName} ${formatDataValue(activePoint.y)}`
           : ""}
       </p>
     </div>

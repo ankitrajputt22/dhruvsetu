@@ -13,7 +13,8 @@ from app.search.semantic import (
     SemanticMatch,
     SemanticSearchUnavailable,
 )
-from app.seed import DEMO_IDS, seed_demo_data
+from app.seed import DEMO_IDS
+from demo_data import seed_demo_data
 
 client = TestClient(app)
 

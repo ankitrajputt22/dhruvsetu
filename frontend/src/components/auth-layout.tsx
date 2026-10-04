@@ -1,6 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Icon, type IconName, LogoMark } from "@/components/icons";
+import { photoCredit, siteImages } from "@/lib/images";
 
 const capabilities: { icon: IconName; text: string }[] = [
   { icon: "search", text: "Explore polar research and its sources" },
@@ -40,13 +42,16 @@ function PolarGrid() {
 
 // The frame shared by Sign In, Create Account and the welcome page: the
 // DhruvSetu panel beside the form on wide screens, the form alone on small ones.
+// In Lite Mode the panel keeps its plain background and no photograph is requested.
 export function AuthLayout({
   title,
   subtitle,
+  lite = false,
   children,
 }: {
   title: string;
   subtitle: string;
+  lite?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -54,6 +59,19 @@ export function AuthLayout({
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm lg:grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
         <aside className="relative hidden rounded-l-2xl bg-[#062f4f] text-white lg:block">
           <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-l-2xl">
+            {!lite && (
+              <>
+                <Image
+                  alt={siteImages.authPanel.alt}
+                  className="object-cover"
+                  fill
+                  sizes="(min-width: 1024px) 480px, 1px"
+                  src={siteImages.authPanel.src}
+                />
+                {/* Keeps the white text readable over the photograph. */}
+                <div className="absolute inset-0 bg-gradient-to-b from-[#062f4f]/92 via-[#062f4f]/78 to-[#062f4f]/45" />
+              </>
+            )}
             <PolarGrid />
           </div>
           {/* Stays in view while a long form is scrolled. */}
@@ -78,6 +96,9 @@ export function AuthLayout({
             <p className="mt-10 border-t border-white/15 pt-6 text-sm leading-6 text-sky-100/80">
               Browsing DhruvSetu needs no account.
             </p>
+            {!lite && (
+              <p className="mt-6 text-[11px] text-white/60">{photoCredit(siteImages.authPanel)}</p>
+            )}
           </div>
         </aside>
 

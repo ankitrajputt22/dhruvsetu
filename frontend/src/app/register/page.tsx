@@ -5,6 +5,7 @@ import { RegisterForm } from "@/components/auth-form";
 import { AuthLayout } from "@/components/auth-layout";
 import { safeNextPath } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/auth-server";
+import { isLiteMode } from "@/lib/lite-mode-server";
 
 export const metadata: Metadata = {
   title: "Create Account",
@@ -23,6 +24,7 @@ export default async function RegisterPage({
 
   return (
     <AuthLayout
+      lite={await isLiteMode()}
       subtitle="Join India's polar science knowledge platform."
       title="Create your DhruvSetu account"
     >

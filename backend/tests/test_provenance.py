@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.database import SessionLocal
 from app.ingestion.retrieval import retrieve_source_chunks
-from app.ingestion.seed_demo import seed_demo_documents
+from demo_data import seed_demo_documents
 from app.ingestion.service import DocumentIngestionError, ingest_document
 from app.main import app
 from app.models import VERIFICATION_STATUSES, DocumentChunk
@@ -284,4 +284,8 @@ def test_search_results_include_provenance_fields() -> None:
     for item in results:
         assert "verification_status" in item
         assert "is_demo_data" in item
-        assert item["source_url"] is None
+        # Demo records have no source. A real record always names one.
+        if item["is_demo_data"]:
+            assert item["source_url"] is None
+        elif item["type"] in ("publication", "dataset", "report"):
+            assert item["source_url"].startswith("http")

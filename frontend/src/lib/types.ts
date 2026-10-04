@@ -1,6 +1,7 @@
 export type Institution = {
   id: string;
   name: string;
+  website: string | null;
 };
 
 export type Scientist = {
@@ -8,6 +9,9 @@ export type Scientist = {
   name: string;
   research_area: string | null;
   institution: Institution | null;
+  designation: string | null;
+  // The official page the profile details come from.
+  profile_url: string | null;
 };
 
 export type ResearchTopic = {
@@ -30,6 +34,7 @@ export type MapStation = {
   id: string;
   name: string;
   description: string | null;
+  source_url: string | null;
   verification_status: string;
   is_demo_data: boolean;
 };
@@ -75,6 +80,7 @@ export type Expedition = {
   summary: string | null;
   start_date: string | null;
   end_date: string | null;
+  source_url: string | null;
   verification_status: string;
   is_demo_data: boolean;
 };
@@ -82,6 +88,8 @@ export type Expedition = {
 export type Publication = {
   id: string;
   title: string;
+  authors: string | null;
+  journal: string | null;
   publication_year: number | null;
   doi: string | null;
   source_url: string | null;

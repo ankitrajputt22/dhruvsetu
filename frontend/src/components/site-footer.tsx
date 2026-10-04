@@ -47,7 +47,12 @@ export function SiteFooter() {
       <div className="border-t border-white/15">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-5 text-xs text-slate-400 sm:flex-row sm:items-center sm:justify-between lg:px-8">
           <p>Prototype developed for Smart India Hackathon.</p>
-          <p>Polar science knowledge, analysis, and outreach.</p>
+          <p>
+            Polar science knowledge, analysis, and outreach.{" "}
+            <Link className="underline transition hover:text-white" href="/image-credits">
+              Image credits
+            </Link>
+          </p>
         </div>
       </div>
     </footer>

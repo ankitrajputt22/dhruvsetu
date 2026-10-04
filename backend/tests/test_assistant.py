@@ -508,21 +508,28 @@ def test_instructions_inside_sources_stay_in_the_source_section(assistant) -> No
 def test_real_retrieval_supplies_source_details() -> None:
     from app.database import SessionLocal
     from app.ingestion.retrieval import retrieve_source_chunks
-    from app.ingestion.seed_demo import seed_demo_documents
+    from app.seed import DOCUMENTS, seed_real_data, seed_real_documents
 
-    seed_demo_documents()
     with SessionLocal() as session:
+        seed_real_data(session)
+        seed_real_documents(session)
         try:
-            chunks = retrieve_source_chunks(session, "sea ice observation", limit=3)
+            chunks = retrieve_source_chunks(session, "ice core from Dronning Maud Land", limit=4)
         except SemanticSearchUnavailable:
             pytest.skip("The local semantic index has not been built")
 
+    real_titles = {item.title for item in DOCUMENTS}
+    chunks = [chunk for chunk in chunks if chunk.document_title in real_titles]
     if not chunks:
-        pytest.skip("The local semantic index has no document chunks")
-    assert chunks[0].file_type == "txt"
-    assert chunks[0].source_type == "prototype"
-    assert chunks[0].verification_status == "uploaded"
-    assert chunks[0].is_demo_data is True
+        pytest.skip("The local semantic index was built before the real documents")
+    # The evidence is a real document with its source, never demo data.
+    for chunk in chunks:
+        assert chunk.is_demo_data is False
+        assert chunk.source_type in ("research_paper", "press_release")
+        assert chunk.source_url.startswith("https://")
+        assert chunk.publication_date is not None
+        assert chunk.verification_status in ("uploaded", "reviewed", "verified")
+    assert any(chunk.file_type == "pdf" and chunk.page_number for chunk in chunks)
 
 
 def test_grounding_rules_are_part_of_the_instructions() -> None:
