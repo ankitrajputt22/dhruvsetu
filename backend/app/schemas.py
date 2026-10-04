@@ -328,6 +328,101 @@ class DataLabResult(ApiSchema):
     duration_ms: int
 
 
+class OutreachResourceType(StrEnum):
+    expedition = "expedition"
+    publication = "publication"
+    dataset = "dataset"
+    document = "document"
+    report = "report"
+
+
+class OutreachAudience(StrEnum):
+    student = "student"
+    teacher = "teacher"
+    journalist = "journalist"
+    public = "public"
+
+
+class OutreachFormat(StrEnum):
+    short_explanation = "short_explanation"
+    social_post = "social_post"
+    classroom_note = "classroom_note"
+    news_brief = "news_brief"
+
+
+class OutreachSourceOption(ApiSchema):
+    resource_type: OutreachResourceType
+    id: str
+    title: str
+    verification_status: str
+    is_demo_data: bool
+
+
+class OutreachFact(ApiSchema):
+    label: str
+    value: str
+
+
+class OutreachTopic(ApiSchema):
+    name: str
+    description: str | None
+
+
+class OutreachMedia(ApiSchema):
+    title: str
+    media_type: str
+
+
+class OutreachWarning(ApiSchema):
+    code: str
+    message: str
+
+
+class OutreachSourceDetail(ApiSchema):
+    resource_type: OutreachResourceType
+    type_label: str
+    id: str
+    title: str
+    summary: str | None
+    verification_status: str
+    is_demo_data: bool
+    source_url: str | None
+    href: str | None
+    facts: list[OutreachFact]
+    topics: list[OutreachTopic]
+    related_resources: list[RelatedDocumentResource]
+    media: list[OutreachMedia]
+    warnings: list[OutreachWarning]
+
+
+class OutreachRequest(BaseModel):
+    resource_type: OutreachResourceType
+    resource_id: str = Field(max_length=36)
+    audience: OutreachAudience
+    format: OutreachFormat
+
+
+class OutreachSection(ApiSchema):
+    heading: str
+    body: str
+
+
+class OutreachDraft(ApiSchema):
+    audience: OutreachAudience
+    format: OutreachFormat
+    title: str
+    sections: list[OutreachSection]
+    text: str
+
+
+class OutreachResult(ApiSchema):
+    # Which generator wrote the draft. Only "template" exists today.
+    generator: str
+    draft: OutreachDraft
+    source: OutreachSourceDetail
+    warnings: list[OutreachWarning]
+
+
 class AssistantQuestion(BaseModel):
     question: str = Field(max_length=500)
 

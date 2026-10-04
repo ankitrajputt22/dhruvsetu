@@ -111,6 +111,41 @@ python -m app.search.build_index
 The prototype does not use OCR, accept public uploads, call an LLM, or generate
 answers. Source retrieval returns original text chunks for later RAG work.
 
+## Outreach Studio
+
+The Outreach Studio turns one repository record into a short draft for a
+chosen audience and format. It uses fixed templates. No AI model or external
+service is called, and no API key is needed.
+
+- `GET /api/outreach/sources?type=expedition&q=...` lists records to choose
+  from. Types: `expedition`, `publication`, `dataset`, `document`, `report`.
+- `GET /api/outreach/sources/{type}/{id}` returns the record details that a
+  draft may use, with any notices.
+- `POST /api/outreach/generate` returns the draft, the source details and the
+  notices. Audiences: `student`, `teacher`, `journalist`, `public`. Formats:
+  `short_explanation`, `social_post`, `classroom_note`, `news_brief`. Any other
+  value is rejected.
+
+How drafts are built:
+
+- `app/outreach/sources.py` reads one record and its existing relationships
+  into a plain list of facts. A fact is added only when the repository has a
+  value for it.
+- `app/outreach/templates.py` has one function per format. The audience
+  changes the wording and which sections appear. The same request always
+  gives the same draft.
+- The repository description is quoted as stored. Nothing else is added apart
+  from the fixed template wording and plain meanings of the record types.
+- Document drafts use catalogue details only. The stored document text is not
+  read or shown.
+- A demo record is marked `Based on Demo / Prototype Data` in the draft, and a
+  record that is not Verified carries a notice. Neither blocks the draft.
+- "Why it matters" appears in a news brief only when the record is not demo
+  data and has research topics with stored descriptions.
+
+Drafts are not saved. A later generator, for example one that uses a language
+model, can be added beside `TemplateGenerator` in `templates.py`.
+
 ## Polar Data Lab
 
 The Data Lab runs Python on one dataset in a temporary session. Each session

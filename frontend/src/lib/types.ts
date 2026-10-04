@@ -307,3 +307,61 @@ export type DataLabResult = {
   state_lost: boolean;
   duration_ms: number;
 };
+
+export type OutreachResourceType =
+  | "expedition"
+  | "publication"
+  | "dataset"
+  | "document"
+  | "report";
+
+export type OutreachAudience = "student" | "teacher" | "journalist" | "public";
+
+export type OutreachFormat =
+  | "short_explanation"
+  | "social_post"
+  | "classroom_note"
+  | "news_brief";
+
+export type OutreachSourceOption = {
+  resource_type: OutreachResourceType;
+  id: string;
+  title: string;
+  verification_status: string;
+  is_demo_data: boolean;
+};
+
+export type OutreachWarning = {
+  code: string;
+  message: string;
+};
+
+export type OutreachSourceDetail = {
+  resource_type: OutreachResourceType;
+  type_label: string;
+  id: string;
+  title: string;
+  summary: string | null;
+  verification_status: string;
+  is_demo_data: boolean;
+  source_url: string | null;
+  href: string | null;
+  facts: { label: string; value: string }[];
+  topics: { name: string; description: string | null }[];
+  related_resources: RelatedDocumentResource[];
+  media: { title: string; media_type: string }[];
+  warnings: OutreachWarning[];
+};
+
+export type OutreachResult = {
+  generator: string;
+  draft: {
+    audience: OutreachAudience;
+    format: OutreachFormat;
+    title: string;
+    sections: { heading: string; body: string }[];
+    text: string;
+  };
+  source: OutreachSourceDetail;
+  warnings: OutreachWarning[];
+};

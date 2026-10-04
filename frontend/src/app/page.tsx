@@ -201,6 +201,24 @@ export default async function Home() {
           </div>
         </section>
 
+        <section className="mt-8 flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-7">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight text-slate-950">
+              Turn research into outreach
+            </h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+              Create a short explanation, classroom note, news brief or social
+              post from a repository record, with its sources.
+            </p>
+          </div>
+          <Link
+            className="inline-flex w-fit shrink-0 items-center gap-2 rounded-lg border border-sky-800 px-5 py-2.5 text-sm font-semibold text-sky-800 transition hover:bg-sky-50"
+            href="/outreach"
+          >
+            Open Outreach Studio <span aria-hidden="true">→</span>
+          </Link>
+        </section>
+
         <section className="mt-16" aria-labelledby="topics-heading">
           <SectionHeading
             id="topics-heading"
