@@ -53,6 +53,22 @@ export function safeExternalUrl(value: string | null): string | null {
   }
 }
 
+// The address of a DOI at doi.org. A value that is not a DOI gives no link.
+export function doiUrl(doi: string | null): string | null {
+  const value = doi?.trim() ?? "";
+  // A DOI is "10.", a registrant number, a slash and a name without spaces.
+  return /^10\.\d{4,9}\/\S+$/.test(value) ? safeExternalUrl(`https://doi.org/${value}`) : null;
+}
+
+// Where a publication can be read: its stored source link, or else its DOI.
+// A publication with neither has no link. None is ever made up.
+export function publicationUrl(publication: {
+  source_url: string | null;
+  doi: string | null;
+}): string | null {
+  return safeExternalUrl(publication.source_url) ?? doiUrl(publication.doi);
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
     return `${bytes} bytes`;
