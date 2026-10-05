@@ -459,6 +459,30 @@ python -m app.search.build_index
 
 Ingestion does not use OCR. A PDF needs readable text, and a scan is rejected.
 
+### Reading the stored file
+
+The document page shows the stored file itself: a text file as plain text, a
+PDF in the browser's own viewer. Search chunks are never used for this.
+
+- `GET /api/documents/{id}` now also returns `file`: the file name, type and
+  size, whether the file is `available`, and whether it is `previewable`. It
+  is empty when DhruvSetu holds no copy. No server path is ever returned.
+- `GET /api/documents/{id}/file` sends the stored file to be shown in the
+  browser (`inline`). A PDF is `application/pdf`, a text file is
+  `text/plain; charset=utf-8`, always with `X-Content-Type-Options: nosniff`.
+- `GET /api/documents/{id}/download` sends the same file as a download.
+
+Only the document ID comes from the request. The file is found from the
+record, and it is served only when the record points at a PDF or TXT file
+directly inside `data/documents` (`app/ingestion/files.py`). A path that leads
+out of the store, a link, a hidden file or another file type gives `404`, as
+does a record whose file is missing. The page then says "The stored file for
+this document is currently unavailable." and still shows everything else.
+
+In production the reference files are kept outside the data volume and copied
+in when missing, every time the API starts (`app/reference_data.py`). See
+"Reference files and the data volume" in [DEPLOYMENT.md](../DEPLOYMENT.md).
+
 Rules for a document that the assistant may quote:
 
 - The file is stored here only when its licence allows redistribution, and the

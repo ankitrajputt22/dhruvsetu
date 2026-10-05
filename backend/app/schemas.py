@@ -254,12 +254,24 @@ class DocumentSummary(LinkedDocument):
     chunk_count: int
 
 
+class DocumentFileInfo(ApiSchema):
+    file_name: str
+    file_type: str
+    size_bytes: int | None
+    # False when the record has a file but it cannot be found or served.
+    available: bool
+    previewable: bool
+    preview_message: str | None
+
+
 class DocumentDetail(DocumentSummary):
     created_at: datetime
     first_page: int | None
     last_page: int | None
     # Display name of the researcher who submitted the record, when there is one.
     submitted_by: str | None = None
+    # The stored copy of the document. Empty when DhruvSetu holds no copy.
+    file: DocumentFileInfo | None = None
 
 
 class DatasetListItem(DatasetSummary):

@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app import reference_data
 from app.admin.routes import router as admin_router
 from app.api import router as api_router
 from app.auth import config as auth_config
@@ -20,6 +21,10 @@ from app.researcher.routes import workspace_router as researcher_workspace_route
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # On a server the data folder is a volume that can start empty. The
+    # reference documents and datasets that are missing from it are put back
+    # before the first request. Nothing that is there is replaced.
+    reference_data.main()
     yield
     # Analysis containers never outlive the API process.
     end_all_sessions()
