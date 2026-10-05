@@ -24,11 +24,15 @@ ENV HF_HUB_OFFLINE=1
 COPY alembic.ini .
 COPY migrations ./migrations
 COPY app ./app
-# The real source documents and datasets that the seed reads. In production a
-# volume is mounted here; a new, empty volume starts with these files.
-COPY data ./data
+# The real source documents and datasets, kept outside the data folder. In
+# production a persistent volume is mounted on /app/backend/data, and on some
+# hosts (Railway) a new volume is empty and hides whatever the image had
+# there. The copy in reference_data is never hidden. Every time the API starts
+# it copies the files that are missing from the data folder (app/main.py).
+COPY data ./reference_data
 
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin dhruvsetu \
+    && mkdir -p /app/backend/data \
     && chown -R dhruvsetu:dhruvsetu /app/backend/data
 USER dhruvsetu
 

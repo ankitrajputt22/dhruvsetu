@@ -250,12 +250,24 @@ export type Document = LinkedDocument & {
   chunk_count: number;
 };
 
+export type DocumentFileInfo = {
+  file_name: string;
+  file_type: string;
+  size_bytes: number | null;
+  // False when the record has a file but it cannot be found or served.
+  available: boolean;
+  previewable: boolean;
+  preview_message: string | null;
+};
+
 export type DocumentDetail = Document & {
   created_at: string;
   first_page: number | null;
   last_page: number | null;
   // Display name of the researcher who submitted it, when there is one.
   submitted_by: string | null;
+  // The stored copy of the document. Empty when DhruvSetu holds no copy.
+  file: DocumentFileInfo | null;
 };
 
 export type AssistantSource = SourceProvenance & {

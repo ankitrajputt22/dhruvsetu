@@ -41,6 +41,16 @@ from app.search.semantic import (
     SemanticSearchUnavailable,
     search_semantic_index,
 )
+from app.ingestion.files import (
+    FILE_UNAVAILABLE,
+    MEDIA_TYPES,
+    TEXT_PREVIEW_BYTES,
+    TEXT_TOO_LARGE,
+    TYPE_NOT_PREVIEWED,
+    DocumentFile,
+    find_document_file,
+    has_stored_file,
+)
 from app.schemas import (
     AssistantAnswer,
     AssistantQuestion,
@@ -52,6 +62,7 @@ from app.schemas import (
     DatasetPreview,
     DatasetSummary,
     DocumentDetail,
+    DocumentFileInfo,
     DocumentSummary,
     ExpeditionDetail,
     ExpeditionSummary,
@@ -73,6 +84,7 @@ from app.schemas import (
 
 router = APIRouter(prefix="/api")
 SEARCH_LIMIT_PER_TYPE = 5
+DOCUMENT_NOT_FOUND = "Document not found"
 
 
 DOCUMENT_RELATIONSHIPS = (
@@ -456,7 +468,7 @@ def get_document(
     if document is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found",
+            detail=DOCUMENT_NOT_FOUND,
         )
 
     chunk_count, first_page, last_page = db.execute(
@@ -473,7 +485,76 @@ def get_document(
         first_page=first_page,
         last_page=last_page,
         submitted_by=_submitter_name(document),
+        file=_document_file_info(document),
     )
+
+
+def _document_file_info(document: Document) -> DocumentFileInfo | None:
+    if not has_stored_file(document):
+        return None
+
+    stored = find_document_file(document)
+    if stored is None:
+        # Either the file is gone, or it is of a type that is never served.
+        supported = document.file_type in MEDIA_TYPES
+        return DocumentFileInfo(
+            file_name=document.file_name,
+            file_type=document.file_type,
+            size_bytes=None,
+            available=False,
+            previewable=False,
+            preview_message=FILE_UNAVAILABLE if supported else TYPE_NOT_PREVIEWED,
+        )
+
+    too_large = stored.file_type == "txt" and stored.size_bytes > TEXT_PREVIEW_BYTES
+    return DocumentFileInfo(
+        file_name=stored.file_name,
+        file_type=stored.file_type,
+        size_bytes=stored.size_bytes,
+        available=True,
+        previewable=not too_large,
+        preview_message=TEXT_TOO_LARGE if too_large else None,
+    )
+
+
+def _get_document_file(db: Session, document_id: str) -> DocumentFile:
+    # Only the ID comes from the request. The file is found from the record.
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=DOCUMENT_NOT_FOUND,
+        )
+    stored = find_document_file(document)
+    if stored is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=FILE_UNAVAILABLE,
+        )
+    return stored
+
+
+def _document_file_response(stored: DocumentFile, disposition: str) -> FileResponse:
+    return FileResponse(
+        stored.path,
+        media_type=stored.media_type,
+        filename=stored.file_name,
+        content_disposition_type=disposition,
+        # The browser must use the type given here and never guess another.
+        headers={"X-Content-Type-Options": "nosniff"},
+    )
+
+
+@router.get("/documents/{document_id}/file")
+def open_document_file(document_id: str, db: Session = Depends(get_db)) -> FileResponse:
+    """The stored PDF or TXT file, to be shown in the browser."""
+    return _document_file_response(_get_document_file(db, document_id), "inline")
+
+
+@router.get("/documents/{document_id}/download")
+def download_document_file(document_id: str, db: Session = Depends(get_db)) -> FileResponse:
+    """The same stored file, sent as a download."""
+    return _document_file_response(_get_document_file(db, document_id), "attachment")
 
 
 def _expedition_document_links(expeditions: list[Expedition]):

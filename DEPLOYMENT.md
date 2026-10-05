@@ -117,13 +117,24 @@ git pull
 docker compose -f compose.production.yaml --env-file .env.production up -d --build
 ```
 
-Run the seed and the index build again when the starter data has changed. The
-seed files inside `backend_data` are copied from the image only when the volume
-is new. After an update that adds seed files, copy them in before seeding:
+Run the seed and the index build again when the starter data has changed.
 
-```bash
-docker compose -f compose.production.yaml --env-file .env.production cp backend/data/. backend:/app/backend/data/
-```
+### Reference files and the data volume
+
+The real source documents and datasets are part of the repository. The API
+image keeps them in `/app/backend/reference_data`, outside the data volume. At
+every start the API copies each one that is missing into `/app/backend/data`.
+A file that is already there is never replaced and nothing is deleted, so
+uploads are safe. This happens inside the API itself, so it does not depend on
+the start command. `python -m app.reference_data` does the same by hand.
+
+This matters on hosts such as Railway, where a new volume starts empty and
+hides the files the image had in the same place. Without this step the records
+exist in the database but their files do not, and document previews, dataset
+previews and downloads report the file as unavailable.
+
+The search index is not a reference file. It is built from the database with
+`python -m app.search.build_index` and stays on the volume.
 
 ## 7. Limits to know
 
@@ -140,8 +151,8 @@ docker compose -f compose.production.yaml --env-file .env.production cp backend/
 - **The globe needs the map service.** Visitors' browsers load map tiles from
   `tiles.openfreemap.org`. If it cannot be reached, the Polar Map shows its
   text list.
-- **Build from a clean checkout.** The API image copies `backend/data`. On a
-  development machine that folder can hold test uploads.
+- **Build from a clean checkout.** The API image copies `backend/data` as its
+  reference files. On a development machine that folder can hold test uploads.
 
 ## 8. Without Docker
 

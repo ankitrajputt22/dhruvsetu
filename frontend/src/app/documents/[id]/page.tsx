@@ -3,14 +3,16 @@ import { notFound } from "next/navigation";
 
 import { AboutSources } from "@/components/about-sources";
 import { DemoLabel } from "@/components/demo-label";
+import { DocumentPreview } from "@/components/document-preview";
 import { Icon, type IconName } from "@/components/icons";
 import { DataMessage } from "@/components/page-heading";
 import { RelatedResources } from "@/components/related-resources";
 import { OriginalSourceLink } from "@/components/source-link";
 import { VerificationBadge } from "@/components/verification-badge";
 import { VerificationSummary } from "@/components/verification-summary";
-import { getApi } from "@/lib/api";
+import { getApi, getApiText } from "@/lib/api";
 import { formatDate, formatPages, formatStatus, safeExternalUrl } from "@/lib/format";
+import { isLiteMode } from "@/lib/lite-mode-server";
 import type { DocumentDetail } from "@/lib/types";
 
 const NOT_AVAILABLE = "Not available";
@@ -38,6 +40,13 @@ export default async function DocumentDetailPage({
 
   const document = result.data;
   const sourceUrl = safeExternalUrl(document.source_url);
+  // A text file is read here, from the stored file itself, and shown as text.
+  const file = document.file ?? null;
+  const text =
+    file?.available && file.previewable && file.file_type === "txt"
+      ? await getApiText(`/api/documents/${encodeURIComponent(document.id)}/file`)
+      : null;
+  const lite = await isLiteMode();
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10 lg:px-8 lg:py-14">
@@ -107,6 +116,14 @@ export default async function DocumentDetailPage({
                 </div>
               )}
             </section>
+
+            <DocumentPreview
+              documentId={document.id}
+              file={file}
+              lite={lite}
+              text={text}
+              title={document.title}
+            />
 
             <section className="mt-10 border-t border-slate-200 pt-8">
               <h2 className="text-xl font-semibold text-slate-950">Related records</h2>

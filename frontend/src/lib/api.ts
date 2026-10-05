@@ -35,6 +35,17 @@ export async function getApi<T>(path: string): Promise<ApiResult<T>> {
   }
 }
 
+// Reads a plain text file from the API, for the text preview of a document.
+// Empty when the file cannot be read.
+export async function getApiText(path: string): Promise<string | null> {
+  try {
+    const response = await fetch(apiUrl(path), { cache: "no-store" });
+    return response.ok ? await response.text() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function postApi<T>(
   path: string,
   body: unknown,
